@@ -1,0 +1,18 @@
+{
+    "name": "com.onemanmonkeysquad.gamekit.scripting",
+    "version": "0.0.1",
+    "displayName": "GameKit Scripting",
+    "description": "",
+    "unity": "6000.0",
+    "unityRelease": "45f1",
+    "documentationUrl": "",
+    "changelogUrl": "",
+    "licensesUrl": "",
+    "dependencies": {},
+    "keywords": [],
+    "author": {
+        "name": "OneManMonkeySquad",
+        "email": "39922492+OneManMonkeySquad@users.noreply.github.com",
+        "url": "https://github.com/OneManMonkeySquad"
+    }
+}
