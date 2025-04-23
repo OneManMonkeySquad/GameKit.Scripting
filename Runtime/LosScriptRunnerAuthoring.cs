@@ -32,14 +32,18 @@ namespace Los.Runtime
             public override void Bake(LosScriptRunnerAuthoring authoring)
             {
                 // Bake script
-                var builder = new BlobBuilder(Allocator.Temp);
-                ref BakedScript script = ref builder.ConstructRoot<BakedScript>();
+                BlobAssetReference<BakedScript> result = new();
+                if (authoring.Script != null)
+                {
+                    var builder = new BlobBuilder(Allocator.Temp);
+                    ref BakedScript script = ref builder.ConstructRoot<BakedScript>();
 
-                script.FileNameHint = authoring.Script.name;
-                builder.AllocateString(ref script.Code, authoring.Script.Code);
+                    script.FileNameHint = authoring.Script.name;
+                    builder.AllocateString(ref script.Code, authoring.Script.Code);
 
-                var result = builder.CreateBlobAssetReference<BakedScript>(Allocator.Persistent);
-                builder.Dispose();
+                    result = builder.CreateBlobAssetReference<BakedScript>(Allocator.Persistent);
+                    builder.Dispose();
+                }
 
                 //
                 var entity = GetEntity(TransformUsageFlags.None);

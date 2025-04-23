@@ -22,6 +22,8 @@ namespace Los.Editor
             }
 
             asset.Code = code;
+
+            Script.Compile(asset.Code, name);
         }
     }
 
