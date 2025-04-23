@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using Los.Runtime;
 using UnityEditor;
@@ -23,7 +24,12 @@ namespace Los.Editor
 
             asset.Code = code;
 
-            Script.Compile(asset.Code, ctx.assetPath);
+            try
+            {
+                Script.Compile(asset.Code, ctx.assetPath);
+            }
+            catch (Exception)
+            { }
         }
     }
 }
