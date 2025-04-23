@@ -7,22 +7,20 @@ namespace GameKit.Scripting.Runtime
 {
     public static class Script
     {
-        static string _output;
-
         public static string Execute(string str, ExecContext ctx = new ExecContext()) => ExecuteFunc(str, "main", ctx);
 
         public static string ExecuteFunc(string str, string funcName, ExecContext ctx = new ExecContext()) => Execute(str, funcName, "<string>", ctx);
 
         static string Execute(string str, string funcName, string fileNameHint, ExecContext ctx = new ExecContext())
         {
-            _output = "";
+            ScriptEngine.Output = "";
 
             var ast = Compile(str, fileNameHint);
 
             var engine = new ScriptEngine();
             engine.ExecuteFunc(ast, funcName, ctx);
 
-            return _output;
+            return ScriptEngine.Output;
         }
 
         public static Ast CompileFile(string filePath)

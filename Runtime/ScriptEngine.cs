@@ -50,12 +50,15 @@ namespace GameKit.Scripting.Runtime
             RegisterFunc("has_component", has_component);
         }
 
-        public static string _output;
+        public static string Output;
 
         static void Print(ExecContext ctx, Value obj)
         {
             Debug.Log(obj.ToString(ctx));
-            _output += obj.ToString(ctx);
+            if (Output != null)
+            {
+                Output += obj.ToString(ctx);
+            }
         }
 
         static Value str(ExecContext ctx, Value str)
