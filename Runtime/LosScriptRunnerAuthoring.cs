@@ -63,7 +63,7 @@ public partial struct LosScriptRunnerSystem : ISystem
 
         foreach (var (foo, entity) in SystemAPI.Query<LosScriptRunner>().WithEntityAccess())
         {
-            var filePath = "E:\\projects\\Factions2\\Assets\\Scripts\\Los\\Tests\\" + foo.FileName.ToString();
+            var filePath = Path.Combine(Application.streamingAssetsPath, "Scripts", foo.FileName.ToString());
 
             var changeTime = File.GetLastWriteTime(filePath);
             if (!singleton.Engines.TryGetValue(filePath, out CachedEngine cachedEngine)
