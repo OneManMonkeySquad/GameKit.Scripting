@@ -1,11 +1,11 @@
 using System;
 using System.IO;
-using Los.Runtime;
+using GameKit.Scripting.Runtime;
 using UnityEditor;
 using UnityEditor.AssetImporters;
 using UnityEngine;
 
-namespace Los.Editor
+namespace GameKit.Scripting.Editor
 {
     [ScriptedImporter(1, "script", AllowCaching = true)]
     public sealed class ScriptAssetImporter : ScriptedImporter

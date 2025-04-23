@@ -1,6 +1,6 @@
 using Unity.Entities;
 
-namespace Los.Runtime
+namespace GameKit.Scripting.Runtime
 {
     public partial struct AttachedScriptSystem : ISystem
     {
@@ -15,12 +15,14 @@ namespace Los.Runtime
                 EntityManager = state.EntityManager,
             };
 
+            var engine = new ScriptEngine();
+            engine.SetVar("elapsed_time", Value.FromDouble(SystemAPI.Time.ElapsedTime));
+
             foreach (var (script, entity) in SystemAPI.Query<AttachedScript>().WithEntityAccess())
             {
-                var engine = Script.Compile(ref script.Script.Value);
+                var ast = Script.Compile(ref script.Script.Value);
                 engine.SetVar("entity", Value.FromEntity(entity));
-                engine.SetVar("elapsed_time", Value.FromDouble(SystemAPI.Time.ElapsedTime));
-                engine.ExecuteFunc("OnUpdate", ctx);
+                engine.ExecuteFunc(ast, "OnUpdate", ctx);
             }
         }
     }

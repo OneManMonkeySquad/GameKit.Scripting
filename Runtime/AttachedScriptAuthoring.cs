@@ -1,12 +1,8 @@
 using UnityEngine;
 using Unity.Entities;
 using Unity.Collections;
-using Los.Runtime;
-using System.IO;
-using System.Collections.Generic;
-using System;
 
-namespace Los.Runtime
+namespace GameKit.Scripting.Runtime
 {
     public struct BakedScript : IComponentData
     {

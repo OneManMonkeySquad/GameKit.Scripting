@@ -2,7 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using Unity.Entities;
 
-namespace Los.Runtime
+namespace GameKit.Scripting.Runtime
 {
     public enum ValueType : byte { Null, Bool, Int, Float, Double, Entity, StringIdx }
 

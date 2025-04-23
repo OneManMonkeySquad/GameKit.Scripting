@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace Los.Runtime
+namespace GameKit.Scripting.Runtime
 {
     public enum TokenKind
     {

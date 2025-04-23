@@ -1,4 +1,4 @@
-using Los.Runtime;
+using GameKit.Scripting.Runtime;
 using NUnit.Framework;
 
 public class NewTestScript

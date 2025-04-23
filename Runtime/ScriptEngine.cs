@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 
-namespace Los.Runtime
+namespace GameKit.Scripting.Runtime
 {
     public class Heap
     {
@@ -30,15 +31,58 @@ namespace Los.Runtime
         public void* Stack;
     }
 
-    public class Engine
+    public class ScriptEngine
     {
-        Ast _ast;
         Dictionary<string, Func<ExecContext, Ast, Call, Value>> _buildinFunctions = new();
         Dictionary<string, Value> _vars = new();
 
-        public Engine(Ast ast)
+        public ScriptEngine()
         {
-            _ast = ast;
+            RegisterBuildinFunctions();
+        }
+
+        void RegisterBuildinFunctions()
+        {
+            RegisterAction("print", Print);
+            RegisterFunc("str", str);
+            RegisterFunc("sin", sin);
+            RegisterFunc("as_float", as_float);
+            RegisterFunc("has_component", has_component);
+        }
+
+        public static string _output;
+
+        static void Print(ExecContext ctx, Value obj)
+        {
+            Debug.Log(obj.ToString(ctx));
+            _output += obj.ToString(ctx);
+        }
+
+        static Value str(ExecContext ctx, Value str)
+        {
+            return Value.FromStringIdx(ctx.StringPool.Store(str.ToString()));
+        }
+
+        static Value sin(ExecContext ctx, Value t)
+        {
+            return Value.FromDouble(math.sin((double)t));
+        }
+
+        static Value as_float(ExecContext ctx, Value t)
+        {
+            switch (t.Type)
+            {
+                case ValueType.Int: return Value.FromFloat((int)t);
+                case ValueType.Float: return t;
+                case ValueType.Double: return Value.FromFloat((float)(double)t);
+                default: throw new System.Exception("Unexpected type");
+            }
+        }
+
+        static Value has_component(ExecContext ctx, Value entity, Value type_idx)
+        {
+            var val = ctx.EntityManager.HasComponent((Entity)entity, ComponentType.ReadOnly((int)type_idx));
+            return Value.FromBool(val);
         }
 
         public void SetVar(string name, Value value)
@@ -53,7 +97,7 @@ namespace Los.Runtime
                 if (call.Arguments.Count != 1)
                     throw new Exception($"{call.Line}: Wrong number of arguments (expected 1, was {call.Arguments.Count})");
 
-                var arg0 = ExecuteExpression(call.Arguments[0], ctx);
+                var arg0 = ExecuteExpression(ast, call.Arguments[0], ctx);
                 act(ctx, arg0);
                 return Value.Null;
             });
@@ -66,8 +110,8 @@ namespace Los.Runtime
                 if (call.Arguments.Count != 2)
                     throw new Exception($"{call.Line}: Wrong number of arguments (expected 2, was {call.Arguments.Count})");
 
-                var arg0 = ExecuteExpression(call.Arguments[0], ctx);
-                var arg1 = ExecuteExpression(call.Arguments[1], ctx);
+                var arg0 = ExecuteExpression(ast, call.Arguments[0], ctx);
+                var arg1 = ExecuteExpression(ast, call.Arguments[1], ctx);
                 act(ctx, arg0, arg1);
                 return Value.Null;
             });
@@ -80,9 +124,9 @@ namespace Los.Runtime
                 if (call.Arguments.Count != 3)
                     throw new Exception($"{call.Line}: Wrong number of arguments (expected 3, was {call.Arguments.Count})");
 
-                var arg0 = ExecuteExpression(call.Arguments[0], ctx);
-                var arg1 = ExecuteExpression(call.Arguments[1], ctx);
-                var arg2 = ExecuteExpression(call.Arguments[2], ctx);
+                var arg0 = ExecuteExpression(ast, call.Arguments[0], ctx);
+                var arg1 = ExecuteExpression(ast, call.Arguments[1], ctx);
+                var arg2 = ExecuteExpression(ast, call.Arguments[2], ctx);
                 act(ctx, arg0, arg1, arg2);
                 return Value.Null;
             });
@@ -95,10 +139,10 @@ namespace Los.Runtime
                 if (call.Arguments.Count != 4)
                     throw new Exception($"{call.Line}: Wrong number of arguments (expected 4, was {call.Arguments.Count})");
 
-                var arg0 = ExecuteExpression(call.Arguments[0], ctx);
-                var arg1 = ExecuteExpression(call.Arguments[1], ctx);
-                var arg2 = ExecuteExpression(call.Arguments[2], ctx);
-                var arg3 = ExecuteExpression(call.Arguments[3], ctx);
+                var arg0 = ExecuteExpression(ast, call.Arguments[0], ctx);
+                var arg1 = ExecuteExpression(ast, call.Arguments[1], ctx);
+                var arg2 = ExecuteExpression(ast, call.Arguments[2], ctx);
+                var arg3 = ExecuteExpression(ast, call.Arguments[3], ctx);
                 act(ctx, arg0, arg1, arg2, arg3);
                 return Value.Null;
             });
@@ -109,9 +153,9 @@ namespace Los.Runtime
             _buildinFunctions.Add(name, (ctx, ast, call) =>
             {
                 if (call.Arguments.Count != 1)
-                    throw new Exception($"{ast.FileNameHint}({call.Line}): Wrong number of arguments (expected 1, was {call.Arguments.Count})");
+                    throw new Exception($"({call.Line}): Wrong number of arguments (expected 1, was {call.Arguments.Count})");
 
-                var arg0 = ExecuteExpression(call.Arguments[0], ctx);
+                var arg0 = ExecuteExpression(ast, call.Arguments[0], ctx);
                 return act(ctx, arg0);
             });
         }
@@ -121,10 +165,10 @@ namespace Los.Runtime
             _buildinFunctions.Add(name, (ctx, ast, call) =>
             {
                 if (call.Arguments.Count != 2)
-                    throw new Exception($"{ast.FileNameHint}({call.Line}): Wrong number of arguments (expected 2, was {call.Arguments.Count})");
+                    throw new Exception($"({call.Line}): Wrong number of arguments (expected 2, was {call.Arguments.Count})");
 
-                var arg0 = ExecuteExpression(call.Arguments[0], ctx);
-                var arg1 = ExecuteExpression(call.Arguments[1], ctx);
+                var arg0 = ExecuteExpression(ast, call.Arguments[0], ctx);
+                var arg1 = ExecuteExpression(ast, call.Arguments[1], ctx);
                 return act(ctx, arg0, arg1);
             });
         }
@@ -134,16 +178,16 @@ namespace Los.Runtime
             _buildinFunctions.Add(name, (ctx, ast, call) =>
             {
                 if (call.Arguments.Count != 3)
-                    throw new Exception($"{ast.FileNameHint}({call.Line}): Wrong number of arguments (expected 3, was {call.Arguments.Count})");
+                    throw new Exception($"({call.Line}): Wrong number of arguments (expected 3, was {call.Arguments.Count})");
 
-                var arg0 = ExecuteExpression(call.Arguments[0], ctx);
-                var arg1 = ExecuteExpression(call.Arguments[1], ctx);
-                var arg2 = ExecuteExpression(call.Arguments[2], ctx);
+                var arg0 = ExecuteExpression(ast, call.Arguments[0], ctx);
+                var arg1 = ExecuteExpression(ast, call.Arguments[1], ctx);
+                var arg2 = ExecuteExpression(ast, call.Arguments[2], ctx);
                 return act(ctx, arg0, arg1, arg2);
             });
         }
 
-        public unsafe Value ExecuteFunc(string name, ExecContext ctx)
+        public unsafe Value ExecuteFunc(Ast ast, string name, ExecContext ctx)
         {
             if (ctx.StringPool == null)
             {
@@ -153,12 +197,12 @@ namespace Los.Runtime
             var mem = Marshal.AllocHGlobal(1024);
             ctx.Stack = mem.ToPointer();
 
-            var func = _ast.Functions[name];
+            var func = ast.Functions[name];
 
             for (int i = 0; i < func.Statements.Count; ++i)
             {
                 var st = func.Statements[i];
-                var (result, done) = ExecuteStatement(st, ctx);
+                var (result, done) = ExecuteStatement(ast, st, ctx);
                 if (done)
                     return result;
             }
@@ -168,7 +212,7 @@ namespace Los.Runtime
             return Value.Null;
         }
 
-        (Value, bool) ExecuteStatement(Statement stmt, ExecContext ctx)
+        (Value, bool) ExecuteStatement(Ast ast, Statement stmt, ExecContext ctx)
         {
             if (stmt == null)
                 throw new ArgumentNullException("stmt");
@@ -178,22 +222,22 @@ namespace Los.Runtime
             switch (stmt)
             {
                 case Call call:
-                    return (ExecuteCall(call, ctx), false);
+                    return (ExecuteCall(ast, call, ctx), false);
                 case Assignment a:
                     {
-                        var val = ExecuteExpression(a.Value, ctx);
+                        var val = ExecuteExpression(ast, a.Value, ctx);
                         _vars[a.Variable] = val;
                         return (Value.Null, false);
                     }
                 case If ifExpr:
                     {
-                        var cnd = ExecuteExpression(ifExpr.Condition, ctx);
+                        var cnd = ExecuteExpression(ast, ifExpr.Condition, ctx);
                         if (cnd.AsBool) // #todo assert is bool
                         {
                             for (int i = 0; i < ifExpr.TrueStatements.Count; ++i)
                             {
                                 var stmt2 = ifExpr.TrueStatements[i];
-                                var (result, done) = ExecuteStatement(stmt2, ctx);
+                                var (result, done) = ExecuteStatement(ast, stmt2, ctx);
                                 if (done)
                                     return (result, true);
                             }
@@ -201,13 +245,13 @@ namespace Los.Runtime
                         return (Value.Null, false);
                     }
                 case Return ret:
-                    return (ExecuteExpression(ret.Value, ctx), true);
+                    return (ExecuteExpression(ast, ret.Value, ctx), true);
                 default:
                     throw new Exception("Todo " + stmt.ToString(""));
             }
         }
 
-        Value ExecuteExpression(Expression expr, ExecContext ctx)
+        Value ExecuteExpression(Ast ast, Expression expr, ExecContext ctx)
         {
             if (expr == null)
                 throw new ArgumentNullException("expr");
@@ -217,11 +261,11 @@ namespace Los.Runtime
             switch (expr)
             {
                 case Call call:
-                    return ExecuteCall(call, ctx);
+                    return ExecuteCall(ast, call, ctx);
                 case AddExpr add:
                     {
-                        var left = ExecuteExpression(add.Left, ctx);
-                        var right = ExecuteExpression(add.Right, ctx);
+                        var left = ExecuteExpression(ast, add.Left, ctx);
+                        var right = ExecuteExpression(ast, add.Right, ctx);
                         return (left.Type, right.Type) switch
                         {
                             (ValueType.Int, ValueType.Int) => Value.FromInt(left.AsInt + right.AsInt),
@@ -233,8 +277,8 @@ namespace Los.Runtime
                     }
                 case MulExpr mul:
                     {
-                        var left = ExecuteExpression(mul.Left, ctx);
-                        var right = ExecuteExpression(mul.Right, ctx);
+                        var left = ExecuteExpression(ast, mul.Left, ctx);
+                        var right = ExecuteExpression(ast, mul.Right, ctx);
                         return (left.Type, right.Type) switch
                         {
                             (ValueType.Int, ValueType.Int) => Value.FromInt(left.AsInt * right.AsInt),
@@ -244,8 +288,8 @@ namespace Los.Runtime
                     }
                 case GreaterExpr greater:
                     {
-                        var left = ExecuteExpression(greater.Left, ctx);
-                        var right = ExecuteExpression(greater.Right, ctx);
+                        var left = ExecuteExpression(ast, greater.Left, ctx);
+                        var right = ExecuteExpression(ast, greater.Right, ctx);
                         return (left.Type, right.Type) switch
                         {
                             (ValueType.Int, ValueType.Int) => Value.FromBool(left.AsInt > right.AsInt),
@@ -254,8 +298,8 @@ namespace Los.Runtime
                     }
                 case LEqualExpr leq:
                     {
-                        var left = ExecuteExpression(leq.Left, ctx);
-                        var right = ExecuteExpression(leq.Right, ctx);
+                        var left = ExecuteExpression(ast, leq.Left, ctx);
+                        var right = ExecuteExpression(ast, leq.Right, ctx);
                         return (left.Type, right.Type) switch
                         {
                             (ValueType.Int, ValueType.Int) => Value.FromBool(left.AsInt <= right.AsInt),
@@ -265,8 +309,8 @@ namespace Los.Runtime
                     }
                 case AndExpr and:
                     {
-                        var left = ExecuteExpression(and.Left, ctx);
-                        var right = ExecuteExpression(and.Right, ctx);
+                        var left = ExecuteExpression(ast, and.Left, ctx);
+                        var right = ExecuteExpression(ast, and.Right, ctx);
                         return (left.Type, right.Type) switch
                         {
                             (ValueType.Bool, ValueType.Bool) => Value.FromBool(left.AsBool && right.AsBool),
@@ -284,27 +328,27 @@ namespace Los.Runtime
             }
         }
 
-        Value ExecuteCall(Call call, ExecContext ctx)
+        Value ExecuteCall(Ast ast, Call call, ExecContext ctx)
         {
             if (_buildinFunctions.ContainsKey(call.Name))
             {
                 var f = _buildinFunctions[call.Name];
-                return f(ctx, _ast, call);
+                return f(ctx, ast, call);
             }
-            else if (_ast.Functions.ContainsKey(call.Name))
+            else if (ast.Functions.ContainsKey(call.Name))
             {
-                var f = _ast.Functions[call.Name];
+                var f = ast.Functions[call.Name];
 
                 // Arguments
                 if (call.Arguments.Count != f.Parameters.Count)
                     throw new Exception($"{call.Line}: Wrong number of arguments for call (expected {f.Parameters.Count}, got {call.Arguments.Count})");
                 for (int i = 0; i < call.Arguments.Count; ++i)
                 {
-                    _vars[f.Parameters[i]] = ExecuteExpression(call.Arguments[i], ctx);
+                    _vars[f.Parameters[i]] = ExecuteExpression(ast, call.Arguments[i], ctx);
                 }
 
                 // Call
-                return ExecuteFunc(call.Name, ctx);
+                return ExecuteFunc(ast, call.Name, ctx);
             }
             else
                 throw new Exception($"Function '{call.Name}' not found");
