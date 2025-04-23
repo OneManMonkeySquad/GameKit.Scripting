@@ -23,8 +23,7 @@ namespace Los.Editor
 
             asset.Code = code;
 
-            Script.Compile(asset.Code, name);
+            Script.Compile(asset.Code, ctx.assetPath);
         }
     }
-
 }

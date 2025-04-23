@@ -31,6 +31,9 @@ namespace Los.Runtime
             return Compile(code, Path.GetFileName(filePath));
         }
 
+        public static Engine Compile(ref BakedScript script) => Compile(script.Code.ToString(), script.FileNameHint.ToString());
+
+
         public static Engine Compile(string str, string fileNameHint)
         {
             var parser = new Parser();
