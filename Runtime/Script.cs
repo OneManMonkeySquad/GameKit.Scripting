@@ -1,7 +1,4 @@
 using System.IO;
-using Unity.Entities;
-using Unity.Mathematics;
-using UnityEngine;
 
 namespace GameKit.Scripting.Runtime
 {
