@@ -65,7 +65,6 @@ public partial struct LosScriptRunnerSystem : ISystem
         {
             var filePath = "E:\\projects\\Factions2\\Assets\\Scripts\\Los\\Tests\\" + foo.FileName.ToString();
 
-
             var changeTime = File.GetLastWriteTime(filePath);
             if (!singleton.Engines.TryGetValue(filePath, out CachedEngine cachedEngine)
                 || cachedEngine.LastChangeTime != changeTime)

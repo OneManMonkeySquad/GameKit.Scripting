@@ -1,6 +1,6 @@
 {
     "name": "com.onemanmonkeysquad.gamekit.scripting",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "displayName": "GameKit Scripting",
     "description": "",
     "unity": "6000.0",
