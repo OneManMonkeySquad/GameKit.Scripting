@@ -12,7 +12,7 @@ namespace GameKit.Scripting.Runtime
         {
             ScriptEngine.Output = "";
 
-            var ast = Compile(str, fileNameHint);
+            var ast = Parse(str, fileNameHint);
 
             var engine = new ScriptEngine();
             engine.ExecuteFunc(ast, funcName, ctx);
@@ -23,13 +23,13 @@ namespace GameKit.Scripting.Runtime
         public static Ast CompileFile(string filePath)
         {
             var code = File.ReadAllText(filePath);
-            return Compile(code, Path.GetFileName(filePath));
+            return Parse(code, Path.GetFileName(filePath));
         }
 
-        public static Ast Compile(ref BakedScript script) => Compile(script.Code.ToString(), script.FileNameHint.ToString());
+        public static Ast Compile(ref BakedScript script) => Parse(script.Code.ToString(), script.FileNameHint.ToString());
 
 
-        public static Ast Compile(string str, string fileNameHint)
+        public static Ast Parse(string str, string fileNameHint)
         {
             var parser = new Parser();
             var ast = parser.ParseToAst(str, fileNameHint);

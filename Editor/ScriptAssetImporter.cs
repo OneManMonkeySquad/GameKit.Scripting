@@ -26,7 +26,7 @@ namespace GameKit.Scripting.Editor
 
             try
             {
-                Script.Compile(asset.Code, ctx.assetPath);
+                Script.Parse(asset.Code, ctx.assetPath);
             }
             catch (Exception)
             { }

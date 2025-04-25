@@ -1,4 +1,4 @@
-# Gamekit.Scripting
+# GameKit.Scripting
 
 ## Quickstart
 

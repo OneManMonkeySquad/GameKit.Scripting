@@ -27,6 +27,8 @@ namespace GameKit.Scripting.Runtime
                 BlobAssetReference<BakedScript> result = new();
                 if (authoring.Script != null)
                 {
+                    DependsOn(authoring.Script);
+
                     var builder = new BlobBuilder(Allocator.Temp);
                     ref BakedScript script = ref builder.ConstructRoot<BakedScript>();
 
