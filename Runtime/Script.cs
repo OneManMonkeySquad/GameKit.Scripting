@@ -10,14 +10,19 @@ namespace GameKit.Scripting.Runtime
 
         static string Execute(string str, string funcName, string fileNameHint, ExecContext ctx = new ExecContext())
         {
-            ScriptEngine.Output = "";
+            ILCompiler.Output = "";
 
             var ast = Parse(str, fileNameHint);
 
             var engine = new ScriptEngine();
             engine.ExecuteFunc(ast, funcName, ctx);
 
-            return ScriptEngine.Output;
+            var compiler = new ILCompiler();
+            var ca = compiler.Compile(ast);
+
+            ca.Functions["main"].Invoke(null, null);
+
+            return ILCompiler.Output;
         }
 
         public static Ast CompileFile(string filePath)

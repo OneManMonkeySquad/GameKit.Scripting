@@ -168,7 +168,7 @@ namespace GameKit.Scripting.Runtime
     public class Ast
     {
         public string FileNameHint;
-        public Dictionary<string, DeclareFunc> Functions;
+        public List<DeclareFunc> Functions;
     }
 
     public class Parser
@@ -184,7 +184,7 @@ namespace GameKit.Scripting.Runtime
 
             _lexer = new Lexer(str, fileNameHint);
 
-            var functions = new Dictionary<string, DeclareFunc>();
+            var functions = new List<DeclareFunc>();
 
             var statements = new List<Statement>();
             while (!_lexer.EndOfFile())
@@ -192,7 +192,7 @@ namespace GameKit.Scripting.Runtime
                 var stmt = ParseStatement();
                 if (stmt is DeclareFunc f)
                 {
-                    functions.Add(f.Name, f);
+                    functions.Add(f);
                 }
                 else
                 {
@@ -200,10 +200,10 @@ namespace GameKit.Scripting.Runtime
                 }
             }
 
-            functions.Add("main", new DeclareFunc { Name = "main", Statements = statements, Parameters = new() });
+            functions.Add(new DeclareFunc { Name = "main", Statements = statements, Parameters = new() });
 
             //
-            foreach (var f in functions.Values)
+            foreach (var f in functions)
             {
                 File.AppendAllText("E:\\stmt.txt", $"=== {f.Name}({string.Join(',', f.Parameters)}) ===\n");
                 foreach (var st in f.Statements)

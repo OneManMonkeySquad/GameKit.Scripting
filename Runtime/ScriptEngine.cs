@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -200,7 +201,7 @@ namespace GameKit.Scripting.Runtime
             var mem = Marshal.AllocHGlobal(1024);
             ctx.Stack = mem.ToPointer();
 
-            var func = ast.Functions[name];
+            var func = ast.Functions.First(f => f.Name == name);
 
             for (int i = 0; i < func.Statements.Count; ++i)
             {
@@ -338,9 +339,9 @@ namespace GameKit.Scripting.Runtime
                 var f = _buildinFunctions[call.Name];
                 return f(ctx, ast, call);
             }
-            else if (ast.Functions.ContainsKey(call.Name))
+            else
             {
-                var f = ast.Functions[call.Name];
+                var f = ast.Functions.First(f => f.Name == call.Name);
 
                 // Arguments
                 if (call.Arguments.Count != f.Parameters.Count)
@@ -353,8 +354,6 @@ namespace GameKit.Scripting.Runtime
                 // Call
                 return ExecuteFunc(ast, call.Name, ctx);
             }
-            else
-                throw new Exception($"Function '{call.Name}' not found");
         }
     }
 }
