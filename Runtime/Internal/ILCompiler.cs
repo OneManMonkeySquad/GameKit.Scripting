@@ -28,6 +28,28 @@ namespace GameKit.Scripting.Runtime
     {
         static List<string> strings = new();
 
+        [Scriptable("print")]
+        public static void Print(Value val)
+        {
+            var str = val.Type switch
+            {
+                ValueType.Null => "null",
+                ValueType.Bool => val.AsBool ? "true" : "false",
+                ValueType.Int => val.AsInt.ToString(),
+                ValueType.Float => val.AsFloat.ToString(),
+                ValueType.Double => val.AsDouble.ToString(),
+                ValueType.Entity => val.AsEntity.ToString(),
+                ValueType.StringIdx => strings[val.AsInt],
+                _ => throw new Exception("Todo ToString"),
+            };
+
+            Debug.Log(str);
+            if (ILCompiler.Output != null)
+            {
+                ILCompiler.Output += str;
+            }
+        }
+
         public static Value CreateString(string str)
         {
             var idx = strings.Count;
@@ -59,6 +81,15 @@ namespace GameKit.Scripting.Runtime
                 (ValueType.Int, ValueType.Int) => Value.FromInt(left.AsInt * right.AsInt),
                 (ValueType.Double, ValueType.Int) => Value.FromDouble(left.AsDouble * right.AsInt),
                 _ => throw new Exception("Unexpected types for Mul " + (left.Type, right.Type)),
+            };
+        }
+
+        public static Value CmpEq(Value left, Value right)
+        {
+            return (left.Type, right.Type) switch
+            {
+                (ValueType.Int, ValueType.Int) => Value.FromBool(left.AsInt == right.AsInt),
+                _ => throw new Exception("Unexpected types for CmpEq " + (left.Type, right.Type)),
             };
         }
 
@@ -294,22 +325,24 @@ namespace GameKit.Scripting.Runtime
                     il.Call(typeof(Buildin).GetMethod("Mul"));
                     break;
 
-                case GreaterExpr var:
-                    VisitExpression(var.Left, il, methods, localVars);
-                    VisitExpression(var.Right, il, methods, localVars);
-                    il.Call(typeof(Buildin).GetMethod("Greater"));
-                    break;
-
-                case LEqualExpr var:
-                    VisitExpression(var.Left, il, methods, localVars);
-                    VisitExpression(var.Right, il, methods, localVars);
-                    il.Call(typeof(Buildin).GetMethod("LEqual"));
-                    break;
-
-                case AndExpr var:
-                    VisitExpression(var.Left, il, methods, localVars);
-                    VisitExpression(var.Right, il, methods, localVars);
-                    il.Call(typeof(Buildin).GetMethod("And"));
+                case CmpExpr cmp:
+                    VisitExpression(cmp.Left, il, methods, localVars);
+                    VisitExpression(cmp.Right, il, methods, localVars);
+                    switch (cmp.Type)
+                    {
+                        case CmpType.And:
+                            il.Call(typeof(Buildin).GetMethod("And"));
+                            break;
+                        case CmpType.Equal:
+                            il.Call(typeof(Buildin).GetMethod("CmpEq"));
+                            break;
+                        case CmpType.Greater:
+                            il.Call(typeof(Buildin).GetMethod("Greater"));
+                            break;
+                        case CmpType.LessOrEqual:
+                            il.Call(typeof(Buildin).GetMethod("LEqual"));
+                            break;
+                    }
                     break;
 
                 case Call call:

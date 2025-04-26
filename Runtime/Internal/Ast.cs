@@ -218,27 +218,26 @@ namespace GameKit.Scripting.Runtime
         }
     }
 
-    public class AndExpr : BinaryExpr
+    public enum CmpType
     {
-        public override string ToString(string padding)
-        {
-            return padding + $"[&&]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
-        }
+        And,
+        Equal,
+        Greater,
+        LessOrEqual
     }
 
-    public class GreaterExpr : BinaryExpr
+    public class CmpExpr : BinaryExpr
     {
-        public override string ToString(string padding)
-        {
-            return padding + $"[>]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
-        }
-    }
+        public readonly CmpType Type;
 
-    public class LEqualExpr : BinaryExpr
-    {
+        public CmpExpr(CmpType type)
+        {
+            Type = type;
+        }
+
         public override string ToString(string padding)
         {
-            return padding + $"[<=]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
+            return padding + $"[{Type}]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
         }
     }
 

@@ -106,14 +106,7 @@ namespace GameKit.Scripting.Runtime
             _lexer.Accept(TokenKind.ParenClose);
 
             // True Body
-            _lexer.Accept(TokenKind.BraceOpen);
-
-            var statements = new List<Statement>();
-            while (!_lexer.Peek(TokenKind.BraceClose))
-            {
-                statements.Add(ParseStatement());
-            }
-            _lexer.Accept(TokenKind.BraceClose);
+            var statements = ParseBody();
 
             // Else?
             List<Statement> falseStatements = null;
@@ -133,6 +126,24 @@ namespace GameKit.Scripting.Runtime
             };
         }
 
+        Statement ParseFunction()
+        {
+            _lexer.Accept(TokenKind.Function);
+
+            var name = _lexer.Accept(TokenKind.NonTerminal);
+
+            var parameters = ParseParameters();
+            var statements = ParseBody();
+
+            return new FunctionDecl
+            {
+                Name = name.Content,
+                Statements = statements,
+                Parameters = parameters,
+                Line = name.Line
+            };
+        }
+
         List<Statement> ParseBody()
         {
             _lexer.Accept(TokenKind.BraceOpen);
@@ -147,34 +158,6 @@ namespace GameKit.Scripting.Runtime
             return statements;
         }
 
-        Statement ParseFunction()
-        {
-            _lexer.Accept(TokenKind.Function);
-
-            var name = _lexer.Accept(TokenKind.NonTerminal);
-
-            var parameters = ParseParameters();
-
-            _lexer.Accept(TokenKind.BraceOpen);
-
-            var statements = new List<Statement>();
-            while (!_lexer.Peek(TokenKind.BraceClose))
-            {
-                statements.Add(ParseStatement());
-            }
-
-            _lexer.Accept(TokenKind.BraceClose);
-
-            return new FunctionDecl
-            {
-                Name = name.Content,
-                Statements = statements,
-                Parameters = parameters,
-                Line = name.Line
-            };
-        }
-
-
         Expression ParseExpression()
         {
             return ParseAnd();
@@ -187,12 +170,26 @@ namespace GameKit.Scripting.Runtime
         {
             var left = ParseRelational();
 
-            while (_lexer.Peek(TokenKind.And))
+            while (_lexer.Peek(TokenKind.CmpAnd) || _lexer.Peek(TokenKind.CmpEq))
             {
-                _lexer.Accept(TokenKind.And);
+                var tk = _lexer.Consume();
+                switch (tk.Kind)
+                {
+                    case TokenKind.CmpAnd:
+                        {
+                            var right = ParseRelational();
+                            left = new CmpExpr(CmpType.And) { Left = left, Right = right, Line = left.Line };
+                            break;
+                        }
+                    case TokenKind.CmpEq:
+                        {
+                            var right = ParseRelational();
+                            left = new CmpExpr(CmpType.Equal) { Left = left, Right = right, Line = left.Line };
+                            break;
+                        }
+                }
 
-                var right = ParseRelational();
-                left = new AndExpr { Left = left, Right = right, Line = left.Line };
+
             }
 
             return left;
@@ -205,18 +202,18 @@ namespace GameKit.Scripting.Runtime
         {
             var left = ParsePlusMinus();
 
-            while (_lexer.Peek(TokenKind.Gt) || _lexer.Peek(TokenKind.LEq))
+            while (_lexer.Peek(TokenKind.CmpGt) || _lexer.Peek(TokenKind.CmpLEq))
             {
                 var tk = _lexer.Consume();
 
                 var right = ParsePlusMinus();
                 switch (tk.Kind)
                 {
-                    case TokenKind.Gt:
-                        left = new GreaterExpr { Left = left, Right = right, Line = left.Line };
+                    case TokenKind.CmpGt:
+                        left = new CmpExpr(CmpType.Greater) { Left = left, Right = right, Line = left.Line };
                         break;
-                    case TokenKind.LEq:
-                        left = new LEqualExpr { Left = left, Right = right, Line = left.Line };
+                    case TokenKind.CmpLEq:
+                        left = new CmpExpr(CmpType.LessOrEqual) { Left = left, Right = right, Line = left.Line };
                         break;
                 }
 

@@ -26,10 +26,11 @@ namespace GameKit.Scripting.Runtime
         Comma,
         Equal, // =
         Plus,
-        Gt, // >
-        LEq, // <=
+        CmpEq, // ==
+        CmpGt, // >
+        CmpLEq, // <=
         Star, // *
-        And, // &&
+        CmpAnd, // &&
 
         Return,
         Function, // fn
@@ -68,10 +69,10 @@ namespace GameKit.Scripting.Runtime
             TokenKind.Comma => ",",
             TokenKind.Equal => "=",
             TokenKind.Plus => "+",
-            TokenKind.Gt => ">",
-            TokenKind.LEq => "<=",
+            TokenKind.CmpGt => ">",
+            TokenKind.CmpLEq => "<=",
             TokenKind.Star => "*",
-            TokenKind.And => "&&",
+            TokenKind.CmpAnd => "&&",
             TokenKind.Return => "return",
             TokenKind.Function => "fn",
             TokenKind.If => "if",
@@ -137,7 +138,16 @@ namespace GameKit.Scripting.Runtime
                     {
                         AddNonTerminal(result, code[lastI..i], line);
 
-                        result.Add(new Token { Kind = TokenKind.And, Line = line });
+                        result.Add(new Token { Kind = TokenKind.CmpAnd, Line = line });
+
+                        ++i;
+                        lastI = i + 1;
+                    }
+                    else if (i + 1 < code.Length && code[i] == '=' && code[i + 1] == '=')
+                    {
+                        AddNonTerminal(result, code[lastI..i], line);
+
+                        result.Add(new Token { Kind = TokenKind.CmpEq, Line = line });
 
                         ++i;
                         lastI = i + 1;
@@ -146,7 +156,7 @@ namespace GameKit.Scripting.Runtime
                     {
                         AddNonTerminal(result, code[lastI..i], line);
 
-                        result.Add(new Token { Kind = TokenKind.LEq, Line = line });
+                        result.Add(new Token { Kind = TokenKind.CmpLEq, Line = line });
 
                         ++i;
                         lastI = i + 1;
@@ -256,7 +266,7 @@ namespace GameKit.Scripting.Runtime
                 '=' => TokenKind.Equal,
                 '+' => TokenKind.Plus,
                 '*' => TokenKind.Star,
-                '>' => TokenKind.Gt,
+                '>' => TokenKind.CmpGt,
                 _ => throw new System.Exception("Todo"),
             };
         }
