@@ -7,20 +7,13 @@ namespace GameKit.Scripting.Runtime
         public VariableSource Source;
         public int ArgumentIdx;
 
-        public override string ToString()
+        public override string ToString() => Source switch
         {
-            switch (Source)
-            {
-                case VariableSource.None:
-                    return "None";
-                case VariableSource.Local:
-                    return "Local";
-                case VariableSource.Argument:
-                    return $"Argument:{ArgumentIdx}";
-                default:
-                    throw new System.Exception("case missing");
-            }
-        }
+            VariableSource.None => "None",
+            VariableSource.Local => "Local",
+            VariableSource.Argument => $"Argument:{ArgumentIdx}",
+            _ => throw new System.Exception("case missing"),
+        };
     }
 
     public class Scope
@@ -45,14 +38,6 @@ namespace GameKit.Scripting.Runtime
     class HasReturnValueVisitor : IVisitAst
     {
         public bool HasReturnValue = false;
-
-        public void EnterScope()
-        {
-        }
-
-        public void ExitScope()
-        {
-        }
 
         public void Expression(Expression expr)
         {
@@ -93,7 +78,7 @@ namespace GameKit.Scripting.Runtime
         {
             if (stmt is Assignment asn)
             {
-                currentScope.Variables.Add(asn.VariableName, new ScopeVariableInfo { Source = VariableSource.Local });
+                currentScope.Variables[asn.VariableName] = new ScopeVariableInfo { Source = VariableSource.Local };
             }
 
             if (stmt is FunctionDecl func)

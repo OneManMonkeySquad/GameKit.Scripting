@@ -6,8 +6,8 @@ namespace GameKit.Scripting.Runtime
     {
         void Statement(Statement stmt);
         void Expression(Expression expr);
-        void EnterScope();
-        void ExitScope();
+        void EnterScope() { }
+        void ExitScope() { }
     }
 
     public abstract class Expression
@@ -135,10 +135,12 @@ namespace GameKit.Scripting.Runtime
         {
             visitor.EnterScope();
             visitor.Statement(this);
+            visitor.EnterScope(); // Double scope here because local variables can shadow parameters, so they need their own scope
             foreach (var stmt in Statements)
             {
                 stmt.Visit(visitor);
             }
+            visitor.ExitScope();
             visitor.ExitScope();
         }
 
