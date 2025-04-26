@@ -1,17 +1,23 @@
 # GameKit.Scripting
+Custom scripting language running on CLR for Unity.
 
 ## Quickstart
 
 ```cs
-var ctx = new ExecContext
+var ast = Script.Compile("print(\"Hello World\")");
+ast.Execute("main");
+```
+
+```cs
+public static class Stdlib
 {
-    EntityManager = state.EntityManager,
-};
+    [Scriptable("sin")]
+    public static Value Sin(Value val)
+    {
+        return Value.FromDouble(math.sin((double)val));
+    }
+}
 
-var engine = new ScriptEngine();
-engine.SetVar("elapsed_time", Value.FromDouble(SystemAPI.Time.ElapsedTime));
-engine.SetVar("entity", Value.FromEntity(entity));
-
-var ast = Script.Compile("print(\"Hello World\""));
-engine.ExecuteFunc(ast, "MyFunc", ctx);
+var ast = Script.Compile("print(sin(42))");
+ast.Execute("main");
 ```
