@@ -226,12 +226,7 @@ namespace GameKit.Scripting.Runtime
         }
     }
 
-    public enum VariableSource
-    {
-        None,
-        Local,
-        Argument,
-    }
+    public enum VariableSource { None, Local, Argument }
 
     public class VariableExpr : Expression
     {

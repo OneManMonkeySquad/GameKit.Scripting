@@ -68,7 +68,7 @@ namespace GameKit.Scripting.Runtime
             {
                 (ValueType.Int, ValueType.Int) => Value.FromInt(left.AsInt * right.AsInt),
                 (ValueType.Double, ValueType.Int) => Value.FromDouble(left.AsDouble * right.AsInt),
-                _ => throw new Exception("Unexpected types for mul " + (left.Type, right.Type)),
+                _ => throw new Exception("Unexpected types for Mul " + (left.Type, right.Type)),
             };
         }
 
@@ -77,7 +77,16 @@ namespace GameKit.Scripting.Runtime
             return (left.Type, right.Type) switch
             {
                 (ValueType.Int, ValueType.Int) => Value.FromBool(left.AsInt > right.AsInt),
-                _ => throw new Exception("Unexpected types for greater " + (left.Type, right.Type)),
+                _ => throw new Exception("Unexpected types for Greater " + (left.Type, right.Type)),
+            };
+        }
+
+        public static Value LEqual(Value left, Value right)
+        {
+            return (left.Type, right.Type) switch
+            {
+                (ValueType.Int, ValueType.Int) => Value.FromBool(left.AsInt <= right.AsInt),
+                _ => throw new Exception("Unexpected types for LEqual " + (left.Type, right.Type)),
             };
         }
 
@@ -259,6 +268,12 @@ namespace GameKit.Scripting.Runtime
                     VisitExpression(var.Left, il, methods, localVars);
                     VisitExpression(var.Right, il, methods, localVars);
                     il.Call(typeof(Buildin).GetMethod("Greater"));
+                    break;
+
+                case LEqualExpr var:
+                    VisitExpression(var.Left, il, methods, localVars);
+                    VisitExpression(var.Right, il, methods, localVars);
+                    il.Call(typeof(Buildin).GetMethod("LEqual"));
                     break;
 
                 case AndExpr var:

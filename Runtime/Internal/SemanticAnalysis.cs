@@ -78,6 +78,7 @@ namespace GameKit.Scripting.Runtime
         {
             if (stmt is Assignment asn)
             {
+                // #todo we just assume the variable has the same source but if not...
                 currentScope.Variables[asn.VariableName] = new ScopeVariableInfo { Source = VariableSource.Local };
             }
 
