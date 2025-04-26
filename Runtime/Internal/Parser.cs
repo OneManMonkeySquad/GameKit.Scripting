@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -13,7 +14,7 @@ namespace GameKit.Scripting.Runtime
         }
     }
 
-    public class Statement : Expression
+    public abstract class Statement : Expression
     {
     }
 
@@ -77,11 +78,17 @@ namespace GameKit.Scripting.Runtime
         }
     }
 
-    public class DeclareFunc : Statement
+    public class FunctionDecl : Statement
     {
         public string Name;
         public List<Statement> Statements;
         public List<string> Parameters;
+        public bool HasReturnValue;
+
+        public override string ToString()
+        {
+            return $"{Name}({string.Join(',', Parameters)}) {(HasReturnValue ? "@HasReturnValue" : "")}";
+        }
 
         public override string ToString(string padding)
         {
@@ -108,50 +115,45 @@ namespace GameKit.Scripting.Runtime
         public override string ToString(string padding) => padding + $"[Value {Value.Type} '{Value}']";
     }
 
-    public class AddExpr : Expression
+    public abstract class BinaryExpr : Expression
     {
         public Expression Left, Right;
+    }
 
+    public class AddExpr : BinaryExpr
+    {
         public override string ToString(string padding)
         {
             return padding + $"[Add]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
         }
     }
 
-    public class MulExpr : Expression
+    public class MulExpr : BinaryExpr
     {
-        public Expression Left, Right;
-
         public override string ToString(string padding)
         {
             return padding + $"[Mul]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
         }
     }
 
-    public class AndExpr : Expression
+    public class AndExpr : BinaryExpr
     {
-        public Expression Left, Right;
-
         public override string ToString(string padding)
         {
             return padding + $"[&&]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
         }
     }
 
-    public class GreaterExpr : Expression
+    public class GreaterExpr : BinaryExpr
     {
-        public Expression Left, Right;
-
         public override string ToString(string padding)
         {
             return padding + $"[>]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
         }
     }
 
-    public class LEqualExpr : Expression
+    public class LEqualExpr : BinaryExpr
     {
-        public Expression Left, Right;
-
         public override string ToString(string padding)
         {
             return padding + $"[<=]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
@@ -168,7 +170,48 @@ namespace GameKit.Scripting.Runtime
     public class Ast
     {
         public string FileNameHint;
-        public List<DeclareFunc> Functions;
+        public List<FunctionDecl> Functions;
+    }
+
+    public class SemanticAnalysis
+    {
+        public void Analyse(Ast ast)
+        {
+            foreach (var func in ast.Functions)
+            {
+                if (HasAnyReturn(func))
+                {
+                    func.HasReturnValue = true;
+                    // #todo ensure all branches return a value
+                }
+            }
+        }
+
+        bool HasAnyReturn(FunctionDecl func)
+        {
+            foreach (var stmt in func.Statements)
+            {
+                if (HasAnyReturn(stmt))
+                    return true;
+            }
+            return false;
+        }
+
+        bool HasAnyReturn(Statement stmt)
+        {
+            if (stmt is Return)
+                return true;
+
+            if (stmt is If ifStmt)
+            {
+                foreach (var stmt2 in ifStmt.TrueStatements)
+                {
+                    if (HasAnyReturn(stmt2))
+                        return true;
+                }
+            }
+            return false;
+        }
     }
 
     public class Parser
@@ -184,13 +227,13 @@ namespace GameKit.Scripting.Runtime
 
             _lexer = new Lexer(str, fileNameHint);
 
-            var functions = new List<DeclareFunc>();
+            var functions = new List<FunctionDecl>();
 
             var statements = new List<Statement>();
             while (!_lexer.EndOfFile())
             {
                 var stmt = ParseStatement();
-                if (stmt is DeclareFunc f)
+                if (stmt is FunctionDecl f)
                 {
                     functions.Add(f);
                 }
@@ -200,23 +243,29 @@ namespace GameKit.Scripting.Runtime
                 }
             }
 
-            functions.Add(new DeclareFunc { Name = "main", Statements = statements, Parameters = new() });
+            functions.Add(new FunctionDecl { Name = "main", Statements = statements, Parameters = new() });
+
+            //
+            var ast = new Ast
+            {
+                FileNameHint = fileNameHint,
+                Functions = functions
+            };
+
+            var sa = new SemanticAnalysis();
+            sa.Analyse(ast);
 
             //
             foreach (var f in functions)
             {
-                File.AppendAllText("E:\\stmt.txt", $"=== {f.Name}({string.Join(',', f.Parameters)}) ===\n");
+                File.AppendAllText("E:\\stmt.txt", $"=== {f} ===\n");
                 foreach (var st in f.Statements)
                 {
                     File.AppendAllText("E:\\stmt.txt", $"{st.ToString("")}\n");
                 }
             }
 
-            return new Ast
-            {
-                FileNameHint = fileNameHint,
-                Functions = functions
-            };
+            return ast;
         }
 
 
@@ -296,7 +345,7 @@ namespace GameKit.Scripting.Runtime
 
             _lexer.Accept(TokenKind.BraceClose);
 
-            return new DeclareFunc
+            return new FunctionDecl
             {
                 Name = name.Content,
                 Statements = statements,

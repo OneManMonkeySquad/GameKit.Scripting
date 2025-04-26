@@ -95,6 +95,11 @@ namespace GameKit.Scripting.Runtime
     {
         public static string Output;
 
+        public static int Test()
+        {
+            return 42;
+        }
+
         public CompiledAst Compile(Ast ast)
         {
             File.WriteAllText("E:\\il.txt", "");
@@ -110,7 +115,13 @@ namespace GameKit.Scripting.Runtime
                     parameters[i] = typeof(Value);
                 }
 
-                var method = new DynamicMethod(func.Name, null, parameters, typeof(ILCompiler));
+                Type resultType = null;
+                if (func.HasReturnValue)
+                {
+                    resultType = typeof(Value);
+                }
+
+                var method = new DynamicMethod(func.Name, resultType, parameters, typeof(ILCompiler));
 
                 methods[func.Name] = method;
             }
@@ -120,7 +131,6 @@ namespace GameKit.Scripting.Runtime
             foreach (var func in ast.Functions)
             {
                 var method = methods[func.Name];
-
                 EmitIL(func, (DynamicMethod)method, methods);
             }
 
@@ -129,9 +139,9 @@ namespace GameKit.Scripting.Runtime
             return ca;
         }
 
-        DynamicMethod EmitIL(DeclareFunc func, DynamicMethod method, Dictionary<string, MethodInfo> methods)
+        DynamicMethod EmitIL(FunctionDecl func, DynamicMethod method, Dictionary<string, MethodInfo> methods)
         {
-            File.AppendAllText("E:\\il.txt", $"=== {func.Name}({string.Join(',', func.Parameters)}) ===\n");
+            File.AppendAllText("E:\\il.txt", $"=== {func} ===\n");
 
             var localVars = new Dictionary<string, GroboIL.Local>();
             using (var il = new GroboIL(method))
@@ -156,14 +166,13 @@ namespace GameKit.Scripting.Runtime
                 case Call call:
                     foreach (var arg in call.Arguments)
                     {
-                        VisitExpression(arg, il, localVars);
+                        VisitExpression(arg, il, methods, localVars);
                     }
                     il.Call(methods[call.Name]);
                     break;
 
                 case Assignment assignment:
-                    VisitExpression(assignment.Value, il, localVars);
-
+                    VisitExpression(assignment.Value, il, methods, localVars);
                     if (!localVars.TryGetValue(assignment.VariableName, out var local))
                     {
                         local = il.DeclareLocal(typeof(Value));
@@ -173,10 +182,9 @@ namespace GameKit.Scripting.Runtime
                     break;
 
                 case If ifStmt:
-                    VisitExpression(ifStmt.Condition, il, localVars);
+                    VisitExpression(ifStmt.Condition, il, methods, localVars);
                     var end = il.DefineLabel("if_false");
                     il.Call(typeof(Buildin).GetMethod("ConvertValueToBool"));
-                    // #todo convert Result to bool
                     il.Brfalse(end);
                     foreach (var stmt2 in ifStmt.TrueStatements)
                     {
@@ -185,10 +193,17 @@ namespace GameKit.Scripting.Runtime
                     }
                     il.MarkLabel(end);
                     break;
+
+                case Return ret:
+                    VisitExpression(ret.Value, il, methods, localVars);
+                    break;
+
+                default:
+                    throw new Exception("Missing case");
             }
         }
 
-        void VisitExpression(Expression expr, GroboIL il, Dictionary<string, GroboIL.Local> localVars)
+        void VisitExpression(Expression expr, GroboIL il, Dictionary<string, MethodInfo> methods, Dictionary<string, GroboIL.Local> localVars)
         {
             switch (expr)
             {
@@ -199,7 +214,7 @@ namespace GameKit.Scripting.Runtime
                             il.Ldc_I4(var.Value.AsBool ? 1 : 0);
                             il.Call(typeof(Value).GetMethod("FromBool"));
                             break;
-                        // #todo
+
                         case ValueType.Int:
                             il.Ldc_I4(var.Value.AsInt);
                             il.Call(typeof(Value).GetMethod("FromInt"));
@@ -218,28 +233,39 @@ namespace GameKit.Scripting.Runtime
                     break;
 
                 case AddExpr var:
-                    VisitExpression(var.Left, il, localVars);
-                    VisitExpression(var.Right, il, localVars);
+                    VisitExpression(var.Left, il, methods, localVars);
+                    VisitExpression(var.Right, il, methods, localVars);
                     il.Call(typeof(Buildin).GetMethod("Add"));
                     break;
 
                 case MulExpr var:
-                    VisitExpression(var.Left, il, localVars);
-                    VisitExpression(var.Right, il, localVars);
+                    VisitExpression(var.Left, il, methods, localVars);
+                    VisitExpression(var.Right, il, methods, localVars);
                     il.Call(typeof(Buildin).GetMethod("Mul"));
                     break;
 
                 case GreaterExpr var:
-                    VisitExpression(var.Left, il, localVars);
-                    VisitExpression(var.Right, il, localVars);
+                    VisitExpression(var.Left, il, methods, localVars);
+                    VisitExpression(var.Right, il, methods, localVars);
                     il.Call(typeof(Buildin).GetMethod("Greater"));
                     break;
 
                 case AndExpr var:
-                    VisitExpression(var.Left, il, localVars);
-                    VisitExpression(var.Right, il, localVars);
+                    VisitExpression(var.Left, il, methods, localVars);
+                    VisitExpression(var.Right, il, methods, localVars);
                     il.Call(typeof(Buildin).GetMethod("And"));
                     break;
+
+                case Call call:
+                    foreach (var arg in call.Arguments)
+                    {
+                        VisitExpression(arg, il, methods, localVars);
+                    }
+                    il.Call(methods[call.Name]);
+                    break;
+
+                default:
+                    throw new Exception("Missing case");
             }
         }
     }
