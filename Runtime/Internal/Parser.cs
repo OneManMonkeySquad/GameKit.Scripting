@@ -54,12 +54,12 @@ namespace GameKit.Scripting.Runtime
 
     public class Assignment : Statement
     {
-        public string Variable;
+        public string VariableName;
         public Expression Value;
 
         public override string ToString(string padding)
         {
-            var str = padding + $"[Assignment '{Variable}']\n";
+            var str = padding + $"[Assignment '{VariableName}']\n";
             str += Value.ToString(padding + "\t");
             return str;
         }
@@ -247,7 +247,7 @@ namespace GameKit.Scripting.Runtime
                 var value = ParseExpression();
                 _lexer.Accept(TokenKind.Semicolon);
 
-                return new Assignment { Variable = name.Content, Value = value, Line = name.Line };
+                return new Assignment { VariableName = name.Content, Value = value, Line = name.Line };
             }
 
             // Call

@@ -13,16 +13,40 @@ namespace GameKit.Scripting.Runtime
         public Dictionary<string, MethodInfo> Functions;
     }
 
-    public class ILCompiler
+    public static class Buildin
     {
-        public static string Output;
+        static List<string> strings = new();
+
+        public static Value CreateString(string str)
+        {
+            var idx = strings.Count;
+            strings.Add(str);
+            return Value.FromStringIdx(idx);
+        }
+
+        public static bool ConvertValueToBool(Value val)
+        {
+            return (bool)val;
+        }
 
         public static void Print(Value val)
         {
-            Debug.Log(val.ToString());
-            if (Output != null)
+            var str = val.Type switch
             {
-                Output += val.ToString();
+                ValueType.Null => "null",
+                ValueType.Bool => val.AsBool ? "true" : "false",
+                ValueType.Int => val.AsInt.ToString(),
+                ValueType.Float => val.AsFloat.ToString(),
+                ValueType.Double => val.AsDouble.ToString(),
+                ValueType.Entity => val.AsEntity.ToString(),
+                ValueType.StringIdx => strings[val.AsInt],
+                _ => throw new Exception("Todo ToString"),
+            };
+
+            Debug.Log(str);
+            if (ILCompiler.Output != null)
+            {
+                ILCompiler.Output += str;
             }
         }
 
@@ -33,10 +57,43 @@ namespace GameKit.Scripting.Runtime
                 (ValueType.Int, ValueType.Int) => Value.FromInt(left.AsInt + right.AsInt),
                 (ValueType.Float, ValueType.Float) => Value.FromFloat(left.AsFloat + right.AsFloat),
                 (ValueType.Float, ValueType.Double) => Value.FromDouble(left.AsFloat + right.AsDouble),
-                // (ValueType.StringIdx, ValueType.StringIdx) => Value.FromStringIdx(ctx.StringPool.Store(ctx.StringPool.Get(left.AsStringIdx) + ctx.StringPool.Get(right.AsStringIdx))),
+                (ValueType.StringIdx, ValueType.StringIdx) => CreateString(strings[left.AsInt] + strings[right.AsInt]),
                 _ => throw new Exception("Unexpected types for add " + (left.Type, right.Type)),
             };
         }
+
+        public static Value Mul(Value left, Value right)
+        {
+            return (left.Type, right.Type) switch
+            {
+                (ValueType.Int, ValueType.Int) => Value.FromInt(left.AsInt * right.AsInt),
+                (ValueType.Double, ValueType.Int) => Value.FromDouble(left.AsDouble * right.AsInt),
+                _ => throw new Exception("Unexpected types for mul " + (left.Type, right.Type)),
+            };
+        }
+
+        public static Value Greater(Value left, Value right)
+        {
+            return (left.Type, right.Type) switch
+            {
+                (ValueType.Int, ValueType.Int) => Value.FromBool(left.AsInt > right.AsInt),
+                _ => throw new Exception("Unexpected types for greater " + (left.Type, right.Type)),
+            };
+        }
+
+        public static Value And(Value left, Value right)
+        {
+            return (left.Type, right.Type) switch
+            {
+                (ValueType.Bool, ValueType.Bool) => Value.FromBool(left.AsBool && right.AsBool),
+                _ => throw new Exception("Unexpected types for and " + (left.Type, right.Type)),
+            };
+        }
+    }
+
+    public class ILCompiler
+    {
+        public static string Output;
 
         public CompiledAst Compile(Ast ast)
         {
@@ -58,7 +115,7 @@ namespace GameKit.Scripting.Runtime
                 methods[func.Name] = method;
             }
 
-            methods["print"] = typeof(ILCompiler).GetMethod("Print");
+            methods["print"] = typeof(Buildin).GetMethod("Print");
 
             foreach (var func in ast.Functions)
             {
@@ -72,25 +129,17 @@ namespace GameKit.Scripting.Runtime
             return ca;
         }
 
-        static void LePrint(Value val)
-        {
-
-        }
-
-        static void Test()
-        {
-            LePrint(Value.FromInt(42));
-        }
-
         DynamicMethod EmitIL(DeclareFunc func, DynamicMethod method, Dictionary<string, MethodInfo> methods)
         {
             File.AppendAllText("E:\\il.txt", $"=== {func.Name}({string.Join(',', func.Parameters)}) ===\n");
 
+            var localVars = new Dictionary<string, GroboIL.Local>();
             using (var il = new GroboIL(method))
             {
                 foreach (var stmt in func.Statements)
                 {
-                    VisitStatement(stmt, il, methods);
+                    VisitStatement(stmt, il, methods, localVars);
+                    il.Nop();
                 }
                 il.Ret();
 
@@ -100,45 +149,96 @@ namespace GameKit.Scripting.Runtime
             return method;
         }
 
-        void VisitStatement(Statement stmt, GroboIL il, Dictionary<string, MethodInfo> methods)
+        void VisitStatement(Statement stmt, GroboIL il, Dictionary<string, MethodInfo> methods, Dictionary<string, GroboIL.Local> localVars)
         {
             switch (stmt)
             {
                 case Call call:
                     foreach (var arg in call.Arguments)
                     {
-                        VisitExpression(arg, il);
+                        VisitExpression(arg, il, localVars);
                     }
                     il.Call(methods[call.Name]);
+                    break;
+
+                case Assignment assignment:
+                    VisitExpression(assignment.Value, il, localVars);
+
+                    if (!localVars.TryGetValue(assignment.VariableName, out var local))
+                    {
+                        local = il.DeclareLocal(typeof(Value));
+                        localVars.Add(assignment.VariableName, local);
+                    }
+                    il.Stloc(local);
+                    break;
+
+                case If ifStmt:
+                    VisitExpression(ifStmt.Condition, il, localVars);
+                    var end = il.DefineLabel("if_false");
+                    il.Call(typeof(Buildin).GetMethod("ConvertValueToBool"));
+                    // #todo convert Result to bool
+                    il.Brfalse(end);
+                    foreach (var stmt2 in ifStmt.TrueStatements)
+                    {
+                        VisitStatement(stmt2, il, methods, localVars);
+                        il.Nop();
+                    }
+                    il.MarkLabel(end);
                     break;
             }
         }
 
-        void VisitExpression(Expression expr, GroboIL il)
+        void VisitExpression(Expression expr, GroboIL il, Dictionary<string, GroboIL.Local> localVars)
         {
             switch (expr)
             {
                 case ValueExpr var:
                     switch (var.Value.Type)
                     {
+                        case ValueType.Bool:
+                            il.Ldc_I4(var.Value.AsBool ? 1 : 0);
+                            il.Call(typeof(Value).GetMethod("FromBool"));
+                            break;
+                        // #todo
                         case ValueType.Int:
                             il.Ldc_I4(var.Value.AsInt);
                             il.Call(typeof(Value).GetMethod("FromInt"));
                             break;
                     }
                     break;
+
                 case VariableExpr var:
-                    il.Ldc_I4(42); // #todo
-                    il.Call(typeof(Value).GetMethod("FromInt"));
+                    var local = localVars[var.Name];
+                    il.Ldloc(local);
                     break;
+
                 case StringExpr var:
-                    il.Ldc_I4(0); // #todo
-                    il.Call(typeof(Value).GetMethod("FromStringIdx"));
+                    il.Ldstr(var.Content);
+                    il.Call(typeof(Buildin).GetMethod("CreateString"));
                     break;
+
                 case AddExpr var:
-                    VisitExpression(var.Left, il);
-                    VisitExpression(var.Right, il);
-                    il.Call(typeof(ILCompiler).GetMethod("Add"));
+                    VisitExpression(var.Left, il, localVars);
+                    VisitExpression(var.Right, il, localVars);
+                    il.Call(typeof(Buildin).GetMethod("Add"));
+                    break;
+
+                case MulExpr var:
+                    VisitExpression(var.Left, il, localVars);
+                    VisitExpression(var.Right, il, localVars);
+                    il.Call(typeof(Buildin).GetMethod("Mul"));
+                    break;
+
+                case GreaterExpr var:
+                    VisitExpression(var.Left, il, localVars);
+                    VisitExpression(var.Right, il, localVars);
+                    il.Call(typeof(Buildin).GetMethod("Greater"));
+                    break;
+
+                case AndExpr var:
+                    VisitExpression(var.Left, il, localVars);
+                    VisitExpression(var.Right, il, localVars);
+                    il.Call(typeof(Buildin).GetMethod("And"));
                     break;
             }
         }

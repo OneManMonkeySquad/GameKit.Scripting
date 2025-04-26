@@ -89,6 +89,11 @@ public class NewTestScript
     public void TestAddMulOperatorPrecedence()
     {
         Assert.AreEqual("42", Script.Execute("print(10 * 2 + 22);"));
+    }
+
+    [Test]
+    public void TestPlusCmpOperatorPrecedence()
+    {
         Assert.AreEqual("true", Script.Execute("print(2 + 1 > 2);"));
     }
 

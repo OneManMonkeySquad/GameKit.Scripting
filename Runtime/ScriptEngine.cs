@@ -230,7 +230,7 @@ namespace GameKit.Scripting.Runtime
                 case Assignment a:
                     {
                         var val = ExecuteExpression(ast, a.Value, ctx);
-                        _vars[a.Variable] = val;
+                        _vars[a.VariableName] = val;
                         return (Value.Null, false);
                     }
                 case If ifExpr:
@@ -275,7 +275,7 @@ namespace GameKit.Scripting.Runtime
                             (ValueType.Int, ValueType.Int) => Value.FromInt(left.AsInt + right.AsInt),
                             (ValueType.Float, ValueType.Float) => Value.FromFloat(left.AsFloat + right.AsFloat),
                             (ValueType.Float, ValueType.Double) => Value.FromDouble(left.AsFloat + right.AsDouble),
-                            (ValueType.StringIdx, ValueType.StringIdx) => Value.FromStringIdx(ctx.StringPool.Store(ctx.StringPool.Get(left.AsStringIdx) + ctx.StringPool.Get(right.AsStringIdx))),
+                            (ValueType.StringIdx, ValueType.StringIdx) => Value.FromStringIdx(ctx.StringPool.Store(ctx.StringPool.Get(left.AsInt) + ctx.StringPool.Get(right.AsInt))),
                             _ => throw new Exception("Unexpected types for add " + (left.Type, right.Type)),
                         };
                     }

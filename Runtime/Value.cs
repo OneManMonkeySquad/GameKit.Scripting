@@ -20,8 +20,6 @@ namespace GameKit.Scripting.Runtime
         [FieldOffset(0)]
         public double AsDouble;
         [FieldOffset(0)]
-        public int AsStringIdx;
-        [FieldOffset(0)]
         public Entity AsEntity;
 
         [FieldOffset(8)]
@@ -32,17 +30,17 @@ namespace GameKit.Scripting.Runtime
         public static Value FromFloat(float f) => new() { Type = ValueType.Float, AsFloat = f };
         public static Value FromDouble(double d) => new() { Type = ValueType.Double, AsDouble = d };
         public static Value FromEntity(Entity e) => new() { Type = ValueType.Entity, AsEntity = e };
-        public static Value FromStringIdx(int i) => new() { Type = ValueType.StringIdx, AsStringIdx = i };
+        public static Value FromStringIdx(int i) => new() { Type = ValueType.StringIdx, AsInt = i };
 
         public override string ToString() => Type switch
         {
             ValueType.Null => "null",
-            ValueType.Bool => AsBool.ToString(),
+            ValueType.Bool => AsBool ? "true" : "false",
             ValueType.Int => AsInt.ToString(),
             ValueType.Float => AsFloat.ToString(),
             ValueType.Double => AsDouble.ToString(),
             ValueType.Entity => AsEntity.ToString(),
-            ValueType.StringIdx => AsStringIdx.ToString(),
+            ValueType.StringIdx => AsInt.ToString(),
             _ => throw new Exception("Todo ToString"),
         };
 
@@ -54,7 +52,7 @@ namespace GameKit.Scripting.Runtime
             ValueType.Float => AsFloat.ToString(),
             ValueType.Double => AsDouble.ToString(),
             ValueType.Entity => AsEntity.ToString(),
-            ValueType.StringIdx => ctx.StringPool.Get(AsStringIdx),
+            ValueType.StringIdx => ctx.StringPool.Get(AsInt),
             _ => throw new Exception("Todo ToString"),
         };
 
