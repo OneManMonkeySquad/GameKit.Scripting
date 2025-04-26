@@ -44,18 +44,6 @@ namespace GameKit.Scripting.Runtime
             _ => throw new Exception("Todo ToString"),
         };
 
-        public string ToString(ExecContext ctx) => Type switch
-        {
-            ValueType.Null => "null",
-            ValueType.Bool => AsBool ? "true" : "false",
-            ValueType.Int => AsInt.ToString(),
-            ValueType.Float => AsFloat.ToString(),
-            ValueType.Double => AsDouble.ToString(),
-            ValueType.Entity => AsEntity.ToString(),
-            ValueType.StringIdx => ctx.StringPool.Get(AsInt),
-            _ => throw new Exception("Todo ToString"),
-        };
-
         public static explicit operator int(Value v) => v.Type switch
         {
             ValueType.Int => v.AsInt,

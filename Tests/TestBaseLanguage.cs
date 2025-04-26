@@ -1,7 +1,7 @@
 using GameKit.Scripting.Runtime;
 using NUnit.Framework;
 
-public class NewTestScript
+public class TestBaseLanguage
 {
     [Test]
     public void TestPrintHelloWorld()
@@ -10,13 +10,17 @@ public class NewTestScript
 
         Assert.AreEqual("Hello World", Script.Execute("  print(\"Hello World\");  \n  "));
 
-        Assert.AreEqual("S1S2", Script.Execute("print(\"S1\");\nprint(\"S2\");"));
+        Assert.AreEqual("S1S2", Script.Execute(
+            "print(\"S1\");\n"
+            + "print(\"S2\");"));
     }
 
     [Test]
     public void TestPrintVariable()
     {
-        Assert.AreEqual("Hello World", Script.Execute("x = \"Hello World\";\nprint(x);"));
+        Assert.AreEqual("Hello World", Script.Execute(
+            "x = \"Hello World\";\n"
+            + "print(x);"));
     }
 
     [Test]

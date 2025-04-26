@@ -4,11 +4,11 @@ namespace GameKit.Scripting.Runtime
 {
     public static class Script
     {
-        public static string Execute(string str, ExecContext ctx = new ExecContext()) => ExecuteFunc(str, "main", ctx);
+        public static string Execute(string str) => ExecuteFunc(str, "main");
 
-        public static string ExecuteFunc(string str, string funcName, ExecContext ctx = new ExecContext()) => Execute(str, funcName, "<string>", ctx);
+        public static string ExecuteFunc(string str, string funcName) => Execute(str, funcName, "<string>");
 
-        static string Execute(string str, string funcName, string fileNameHint, ExecContext ctx = new ExecContext())
+        static string Execute(string str, string funcName, string fileNameHint)
         {
             ILCompiler.Output = "";
 

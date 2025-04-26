@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
 using GrEmit;
+using UnityEditor;
 using UnityEngine;
 
 namespace GameKit.Scripting.Runtime
@@ -37,27 +38,6 @@ namespace GameKit.Scripting.Runtime
         public static bool ConvertValueToBool(Value val)
         {
             return (bool)val;
-        }
-
-        public static void Print(Value val)
-        {
-            var str = val.Type switch
-            {
-                ValueType.Null => "null",
-                ValueType.Bool => val.AsBool ? "true" : "false",
-                ValueType.Int => val.AsInt.ToString(),
-                ValueType.Float => val.AsFloat.ToString(),
-                ValueType.Double => val.AsDouble.ToString(),
-                ValueType.Entity => val.AsEntity.ToString(),
-                ValueType.StringIdx => strings[val.AsInt],
-                _ => throw new Exception("Todo ToString"),
-            };
-
-            Debug.Log(str);
-            if (ILCompiler.Output != null)
-            {
-                ILCompiler.Output += str;
-            }
         }
 
         public static Value Add(Value left, Value right)
@@ -110,20 +90,34 @@ namespace GameKit.Scripting.Runtime
         }
     }
 
+    [AttributeUsage(AttributeTargets.Method)]
+    public class ScriptableAttribute : Attribute
+    {
+        public readonly string Name;
+
+        public ScriptableAttribute(string name)
+        {
+            Name = name;
+        }
+    }
+
     public class ILCompiler
     {
         public static string Output;
 
-        public static int Test()
+        void RegisterMethods(Dictionary<string, MethodInfo> methods)
         {
-            return 42;
+            var taggedMethods = TypeCache.GetMethodsWithAttribute<ScriptableAttribute>();
+            foreach (var taggedMethod in taggedMethods)
+            {
+                var name = taggedMethod.GetCustomAttribute<ScriptableAttribute>().Name;
+                methods[name] = taggedMethod;
+            }
         }
 
         public CompiledScript Compile(Ast ast)
         {
             File.WriteAllText("E:\\il.txt", "");
-
-
 
             var methods = new Dictionary<string, MethodInfo>();
             foreach (var func in ast.Functions)
@@ -145,7 +139,7 @@ namespace GameKit.Scripting.Runtime
                 methods[func.Name] = method;
             }
 
-            methods["print"] = typeof(Buildin).GetMethod("Print");
+            RegisterMethods(methods);
 
             foreach (var func in ast.Functions)
             {

@@ -10,18 +10,9 @@ namespace GameKit.Scripting.Runtime
 
         public void OnUpdate(ref SystemState state)
         {
-            var ctx = new ExecContext
-            {
-                EntityManager = state.EntityManager,
-            };
-
-            var engine = new ScriptEngine();
-            engine.SetVar("elapsed_time", Value.FromDouble(SystemAPI.Time.ElapsedTime));
-
             foreach (var (script, entity) in SystemAPI.Query<AttachedScript>().WithEntityAccess())
             {
                 var ast = Script.Compile(ref script.Script.Value);
-                engine.SetVar("entity", Value.FromEntity(entity));
 
                 ast.Execute("OnUpdate");
             }
