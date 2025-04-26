@@ -132,33 +132,33 @@ public class TestBaseLanguage
     [Test]
     public void TestIfTrue()
     {
-        Assert.AreEqual("42", Script.Execute("if(true)\n{ print(42); }"));
+        Assert.AreEqual("42", Script.Execute("if true \n{ print(42); }"));
     }
 
     [Test]
     public void TestIfFalse()
     {
-        Assert.AreEqual("", Script.Execute("if(false){ print(42); }"));
+        Assert.AreEqual("", Script.Execute("if false { print(42); }"));
     }
 
     [Test]
     public void TestIfElse()
     {
-        Assert.AreEqual("2", Script.Execute("if (false) { print(1); } else { print(2); }"));
+        Assert.AreEqual("2", Script.Execute("if false { print(1); } else { print(2); }"));
     }
 
     [Test]
     public void TestIfChain()
     {
-        Assert.AreEqual("2", Script.Execute("if (false) { print(1); } else { if(true) { print(2); } else { print(3);  } }"));
+        Assert.AreEqual("2", Script.Execute("if false { print(1); } else { if true { print(2); } else { print(3);  } }"));
     }
 
     [Test]
     public void TestAnd()
     {
-        Assert.AreEqual("42", Script.Execute("if(true && true){ print(42); }"));
-        Assert.AreEqual("", Script.Execute("if(true && false){ print(42); }"));
-        Assert.AreEqual("", Script.Execute("if(false && true){ print(42); }"));
+        Assert.AreEqual("42", Script.Execute("if true && true { print(42); }"));
+        Assert.AreEqual("", Script.Execute("if true && false { print(42); }"));
+        Assert.AreEqual("", Script.Execute("if false && true { print(42); }"));
     }
 
     [Test]

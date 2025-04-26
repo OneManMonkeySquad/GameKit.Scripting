@@ -218,6 +218,7 @@ namespace GameKit.Scripting.Runtime
         }
     }
 
+
     public enum CmpType
     {
         And,
@@ -241,6 +242,7 @@ namespace GameKit.Scripting.Runtime
         }
     }
 
+
     public enum VariableSource { None, Local, Argument }
 
     public class VariableExpr : Expression
@@ -250,6 +252,7 @@ namespace GameKit.Scripting.Runtime
 
         public override string ToString(string padding) => padding + $"[Variable {ScopeInfo} '{Name}']";
     }
+
 
     public class Ast
     {

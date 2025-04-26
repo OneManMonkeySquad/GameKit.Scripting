@@ -57,8 +57,6 @@ namespace GameKit.Scripting.Runtime
             return ast;
         }
 
-
-
         Statement ParseStatement()
         {
             if (_lexer.Peek(TokenKind.Return))
@@ -101,9 +99,7 @@ namespace GameKit.Scripting.Runtime
             _lexer.Accept(TokenKind.If);
 
             // Condition
-            _lexer.Accept(TokenKind.ParenOpen);
             var cond = ParseExpression();
-            _lexer.Accept(TokenKind.ParenClose);
 
             // True Body
             var statements = ParseBody();
@@ -164,7 +160,7 @@ namespace GameKit.Scripting.Runtime
         }
 
         /// <summary>
-        /// Relational {( "&&" ) Relational}
+        /// Relational {( "&&" | "==" ) Relational}
         /// </summary>
         Expression ParseAnd()
         {
