@@ -8,9 +8,19 @@ using UnityEngine;
 
 namespace GameKit.Scripting.Runtime
 {
-    public class CompiledAst
+    public class CompiledScript
     {
-        public Dictionary<string, MethodInfo> Functions;
+        Dictionary<string, MethodInfo> Functions;
+
+        public CompiledScript(Dictionary<string, MethodInfo> functions)
+        {
+            Functions = functions;
+        }
+
+        public void Execute(string name)
+        {
+            Functions[name].Invoke(null, null);
+        }
     }
 
     public static class Buildin
@@ -109,11 +119,11 @@ namespace GameKit.Scripting.Runtime
             return 42;
         }
 
-        public CompiledAst Compile(Ast ast)
+        public CompiledScript Compile(Ast ast)
         {
             File.WriteAllText("E:\\il.txt", "");
 
-            var ca = new CompiledAst();
+
 
             var methods = new Dictionary<string, MethodInfo>();
             foreach (var func in ast.Functions)
@@ -143,8 +153,7 @@ namespace GameKit.Scripting.Runtime
                 EmitIL(func, (DynamicMethod)method, methods);
             }
 
-            ca.Functions = methods;
-
+            var ca = new CompiledScript(methods);
             return ca;
         }
 
@@ -192,7 +201,6 @@ namespace GameKit.Scripting.Runtime
 
                 case If ifStmt:
                     VisitExpression(ifStmt.Condition, il, methods, localVars);
-
                     il.Call(typeof(Buildin).GetMethod("ConvertValueToBool"));
                     if (ifStmt.FalseStatements != null)
                     {

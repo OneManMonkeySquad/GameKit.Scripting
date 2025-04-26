@@ -22,7 +22,8 @@ namespace GameKit.Scripting.Runtime
             {
                 var ast = Script.Compile(ref script.Script.Value);
                 engine.SetVar("entity", Value.FromEntity(entity));
-                engine.ExecuteFunc(ast, "OnUpdate", ctx);
+
+                ast.Execute("OnUpdate");
             }
         }
     }

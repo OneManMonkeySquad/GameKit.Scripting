@@ -12,31 +12,29 @@ namespace GameKit.Scripting.Runtime
         {
             ILCompiler.Output = "";
 
-            var ast = Parse(str, fileNameHint);
-
-            var compiler = new ILCompiler();
-            var ca = compiler.Compile(ast);
-
-            ca.Functions[funcName].Invoke(null, null);
+            var ast = Compile(str, fileNameHint);
+            ast.Execute(funcName);
 
             return ILCompiler.Output;
         }
 
-        public static Ast CompileFile(string filePath)
+        public static CompiledScript CompileFile(string filePath)
         {
             var code = File.ReadAllText(filePath);
-            return Parse(code, Path.GetFileName(filePath));
+            return Compile(code, Path.GetFileName(filePath));
         }
 
-        public static Ast Compile(ref BakedScript script) => Parse(script.Code.ToString(), script.FileNameHint.ToString());
+        public static CompiledScript Compile(ref BakedScript script) => Compile(script.Code.ToString(), script.FileNameHint.ToString());
 
 
-        public static Ast Parse(string str, string fileNameHint)
+        public static CompiledScript Compile(string str, string fileNameHint)
         {
             var parser = new Parser();
             var ast = parser.ParseToAst(str, fileNameHint);
 
-            return ast;
+            var compiler = new ILCompiler();
+            var ca = compiler.Compile(ast);
+            return ca;
         }
     }
 }
