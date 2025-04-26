@@ -22,6 +22,11 @@ namespace GameKit.Scripting.Runtime
         {
             Functions[name].Invoke(null, null);
         }
+
+        public void Execute(string name, Value arg0)
+        {
+            Functions[name].Invoke(null, new object[] { arg0 });
+        }
     }
 
     public static class Buildin
@@ -70,6 +75,7 @@ namespace GameKit.Scripting.Runtime
                 (ValueType.Float, ValueType.Float) => Value.FromFloat(left.AsFloat + right.AsFloat),
                 (ValueType.Float, ValueType.Double) => Value.FromDouble(left.AsFloat + right.AsDouble),
                 (ValueType.StringIdx, ValueType.StringIdx) => CreateString(strings[left.AsInt] + strings[right.AsInt]),
+                (ValueType.StringIdx, ValueType.Entity) => CreateString(strings[left.AsInt] + right.AsEntity),
                 _ => throw new Exception("Unexpected types for add " + (left.Type, right.Type)),
             };
         }

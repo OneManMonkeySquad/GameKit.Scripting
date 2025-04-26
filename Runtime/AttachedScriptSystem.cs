@@ -14,7 +14,7 @@ namespace GameKit.Scripting.Runtime
             {
                 var ast = Script.Compile(ref script.Script.Value);
 
-                ast.Execute("OnUpdate");
+                ast.Execute("OnUpdate", Value.FromEntity(entity));
             }
         }
     }
