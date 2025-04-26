@@ -223,8 +223,19 @@ namespace GameKit.Scripting.Runtime
                     break;
 
                 case VariableExpr var:
-                    var local = localVars[var.Name];
-                    il.Ldloc(local);
+                    switch (var.ScopeInfo.Source)
+                    {
+                        case VariableSource.None:
+                            // ???
+                            break;
+                        case VariableSource.Local:
+                            var local = localVars[var.Name];
+                            il.Ldloc(local);
+                            break;
+                        case VariableSource.Argument:
+                            il.Ldarg(var.ScopeInfo.ArgumentIdx);
+                            break;
+                    }
                     break;
 
                 case StringExpr var:
