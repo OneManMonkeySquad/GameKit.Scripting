@@ -131,6 +131,12 @@ public class NewTestScript
     }
 
     [Test]
+    public void TestIfElse()
+    {
+        Assert.AreEqual("2", Script.Execute("if (false) { print(1); } else { print(2); }"));
+    }
+
+    [Test]
     public void TestAnd()
     {
         Assert.AreEqual("42", Script.Execute("if(true && true){ print(42); }"));

@@ -100,10 +100,12 @@ namespace GameKit.Scripting.Runtime
         {
             _lexer.Accept(TokenKind.If);
 
+            // Condition
             _lexer.Accept(TokenKind.ParenOpen);
             var cond = ParseExpression();
             _lexer.Accept(TokenKind.ParenClose);
 
+            // True Body
             _lexer.Accept(TokenKind.BraceOpen);
 
             var statements = new List<Statement>();
@@ -113,7 +115,36 @@ namespace GameKit.Scripting.Runtime
             }
             _lexer.Accept(TokenKind.BraceClose);
 
-            return new If { Condition = cond, TrueStatements = statements, Line = cond.Line };
+            // Else?
+            List<Statement> falseStatements = null;
+            if (_lexer.Peek(TokenKind.Else))
+            {
+                _lexer.Accept(TokenKind.Else);
+
+                falseStatements = ParseBody();
+            }
+
+            return new If
+            {
+                Condition = cond,
+                TrueStatements = statements,
+                FalseStatements = falseStatements,
+                Line = cond.Line
+            };
+        }
+
+        List<Statement> ParseBody()
+        {
+            _lexer.Accept(TokenKind.BraceOpen);
+
+            var statements = new List<Statement>();
+            while (!_lexer.Peek(TokenKind.BraceClose))
+            {
+                statements.Add(ParseStatement());
+            }
+            _lexer.Accept(TokenKind.BraceClose);
+
+            return statements;
         }
 
         Statement ParseFunction()

@@ -192,15 +192,43 @@ namespace GameKit.Scripting.Runtime
 
                 case If ifStmt:
                     VisitExpression(ifStmt.Condition, il, methods, localVars);
-                    var end = il.DefineLabel("if_false");
+
                     il.Call(typeof(Buildin).GetMethod("ConvertValueToBool"));
-                    il.Brfalse(end);
-                    foreach (var stmt2 in ifStmt.TrueStatements)
+                    if (ifStmt.FalseStatements != null)
                     {
-                        VisitStatement(stmt2, il, methods, localVars);
-                        il.Nop();
+                        var conditionWasTrue = il.DefineLabel("if_end");
+                        var conditionWasFalse = il.DefineLabel("if_false");
+
+                        il.Brfalse(conditionWasFalse);
+                        foreach (var stmt2 in ifStmt.TrueStatements)
+                        {
+                            VisitStatement(stmt2, il, methods, localVars);
+                            il.Nop();
+                        }
+                        il.Br(conditionWasTrue);
+
+                        il.MarkLabel(conditionWasFalse);
+                        foreach (var stmt2 in ifStmt.FalseStatements)
+                        {
+                            VisitStatement(stmt2, il, methods, localVars);
+                            il.Nop();
+                        }
+
+                        il.MarkLabel(conditionWasTrue);
                     }
-                    il.MarkLabel(end);
+                    else
+                    {
+                        var conditionWasFalse = il.DefineLabel("if_false");
+
+                        il.Brfalse(conditionWasFalse);
+                        foreach (var stmt2 in ifStmt.TrueStatements)
+                        {
+                            VisitStatement(stmt2, il, methods, localVars);
+                            il.Nop();
+                        }
+
+                        il.MarkLabel(conditionWasFalse);
+                    }
                     break;
 
                 case Return ret:

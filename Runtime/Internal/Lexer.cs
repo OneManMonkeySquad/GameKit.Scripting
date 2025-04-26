@@ -34,6 +34,7 @@ namespace GameKit.Scripting.Runtime
         Return,
         Function, // fn
         If,
+        Else,
 
         String,
         Integer,
@@ -74,6 +75,7 @@ namespace GameKit.Scripting.Runtime
             TokenKind.Return => "return",
             TokenKind.Function => "fn",
             TokenKind.If => "if",
+            TokenKind.Else => "else",
             TokenKind.String => "<string>",
             TokenKind.Integer => "<integer>",
             TokenKind.Boolean => "<boolean>",
@@ -274,6 +276,12 @@ namespace GameKit.Scripting.Runtime
             if (content == "if")
             {
                 tokens.Add(new Token { Kind = TokenKind.If, Line = line });
+                return;
+            }
+
+            if (content == "else")
+            {
+                tokens.Add(new Token { Kind = TokenKind.Else, Line = line });
                 return;
             }
 

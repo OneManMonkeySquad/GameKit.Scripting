@@ -14,9 +14,6 @@ namespace GameKit.Scripting.Runtime
 
             var ast = Parse(str, fileNameHint);
 
-            // var engine = new ScriptEngine();
-            // engine.ExecuteFunc(ast, funcName, ctx);
-
             var compiler = new ILCompiler();
             var ca = compiler.Compile(ast);
 

@@ -62,6 +62,7 @@ namespace GameKit.Scripting.Runtime
     {
         public Expression Condition;
         public List<Statement> TrueStatements;
+        public List<Statement> FalseStatements;
 
         public override void Visit(IVisitAst visitor)
         {
@@ -71,6 +72,13 @@ namespace GameKit.Scripting.Runtime
             {
                 stmt.Visit(visitor);
             }
+            if (FalseStatements != null)
+            {
+                foreach (var stmt in FalseStatements)
+                {
+                    stmt.Visit(visitor);
+                }
+            }
         }
 
         public override string ToString(string padding)
@@ -78,10 +86,18 @@ namespace GameKit.Scripting.Runtime
             var str = padding + $"[If]";
             str += "\n" + padding + "\tCondition:";
             str += "\n" + Condition.ToString(padding + "\t\t");
-            str += "\n" + padding + "\tStatements:";
+            str += "\n" + padding + "\tTrue Body:";
             foreach (var stmt in TrueStatements)
             {
                 str += "\n" + stmt.ToString(padding + "\t\t");
+            }
+            str += "\n" + padding + "\tFalse Body:";
+            if (FalseStatements != null)
+            {
+                foreach (var stmt in FalseStatements)
+                {
+                    str += "\n" + stmt.ToString(padding + "\t\t");
+                }
             }
             return str;
         }
