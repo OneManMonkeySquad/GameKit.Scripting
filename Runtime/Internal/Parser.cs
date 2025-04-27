@@ -61,20 +61,7 @@ namespace GameKit.Scripting.Internal
         Statement ParseStatement()
         {
             if (_lexer.Peek(TokenKind.Return))
-            {
-                var tk = _lexer.Accept(TokenKind.Return);
-                if (!_lexer.Peek(TokenKind.Semicolon))
-                {
-                    var value = ParseExpression();
-                    _lexer.Accept(TokenKind.Semicolon);
-
-                    return new Return { Value = value, SourceLocation = value.SourceLocation };
-                }
-
-                _lexer.Accept(TokenKind.Semicolon);
-
-                return new Return { SourceLocation = tk.SourceLocation };
-            }
+                return ParseReturn();
 
             if (_lexer.Peek(TokenKind.If))
                 return ParseIfStatement();
@@ -103,6 +90,22 @@ namespace GameKit.Scripting.Internal
             _lexer.Accept(TokenKind.Semicolon);
 
             return new Call { Name = name.Content, Arguments = arguments, SourceLocation = name.SourceLocation };
+        }
+
+        Statement ParseReturn()
+        {
+            var tk = _lexer.Accept(TokenKind.Return);
+            if (!_lexer.Peek(TokenKind.Semicolon))
+            {
+                var value = ParseExpression();
+                _lexer.Accept(TokenKind.Semicolon);
+
+                return new Return { Value = value, SourceLocation = value.SourceLocation };
+            }
+
+            _lexer.Accept(TokenKind.Semicolon);
+
+            return new Return { SourceLocation = tk.SourceLocation };
         }
 
         Statement ParseIfStatement()
