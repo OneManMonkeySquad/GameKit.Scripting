@@ -15,6 +15,12 @@ namespace GameKit.Scripting.Runtime
         public BlobAssetReference<BakedScript> Script;
     }
 
+    [InternalBufferCapacity(0)]
+    public struct QueuedScriptEvent : IBufferElementData
+    {
+        public FixedString64Bytes Name;
+    }
+
     public class AttachedScriptAuthoring : MonoBehaviour
     {
         public ScriptAsset Script;
@@ -45,6 +51,8 @@ namespace GameKit.Scripting.Runtime
                 {
                     Script = result
                 });
+                var buff = AddBuffer<QueuedScriptEvent>(entity);
+                buff.Add(new QueuedScriptEvent { Name = "OnInit" });
             }
         }
     }
