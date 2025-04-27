@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using System.IO;
+using GameKit.Scripting.Runtime;
 
-namespace GameKit.Scripting.Runtime
+namespace GameKit.Scripting.Internal
 {
     public class Parser
     {
@@ -87,6 +88,9 @@ namespace GameKit.Scripting.Runtime
             }
 
             // Call
+            if (!_lexer.Peek(TokenKind.ParenOpen))
+                _lexer.ThrowError("Expected on of =, (");
+
             var arguments = ParseArguments();
 
             _lexer.Accept(TokenKind.Semicolon);
@@ -259,7 +263,17 @@ namespace GameKit.Scripting.Runtime
         /// </summary>
         Expression ParseUnary()
         {
-            return ParsePrimary();
+            // #todo plus
+            if (_lexer.Peek(TokenKind.Minus))
+            {
+                var tk = _lexer.Accept(TokenKind.Minus);
+
+                return new NegateExpr { Value = ParsePrimary(), Line = tk.Line };
+            }
+            else
+            {
+                return ParsePrimary();
+            }
         }
 
         /// <summary>

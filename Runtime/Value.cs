@@ -4,12 +4,12 @@ using Unity.Entities;
 
 namespace GameKit.Scripting.Runtime
 {
-    public enum ValueType : byte { Null, Bool, Int, Float, Double, Entity, StringIdx }
+    public enum ValueTypeIdx : byte { Null, Bool, Int, Float, Double, Entity, StringIdx }
 
     [StructLayout(LayoutKind.Explicit)]
     public struct Value
     {
-        public static readonly Value Null = new Value { Type = ValueType.Null };
+        public static readonly Value Null = new Value { Type = ValueTypeIdx.Null };
 
         [FieldOffset(0)]
         public bool AsBool;
@@ -25,58 +25,58 @@ namespace GameKit.Scripting.Runtime
         [FieldOffset(8)]
         public ValueType Type;
 
-        public static Value FromBool(bool b) => new() { Type = ValueType.Bool, AsBool = b };
-        public static Value FromInt(int i) => new() { Type = ValueType.Int, AsInt = i };
-        public static Value FromFloat(float f) => new() { Type = ValueType.Float, AsFloat = f };
-        public static Value FromDouble(double d) => new() { Type = ValueType.Double, AsDouble = d };
-        public static Value FromEntity(Entity e) => new() { Type = ValueType.Entity, AsEntity = e };
-        public static Value FromStringIdx(int i) => new() { Type = ValueType.StringIdx, AsInt = i };
+        public static Value FromBool(bool b) => new() { Type = ValueTypeIdx.Bool, AsBool = b };
+        public static Value FromInt(int i) => new() { Type = ValueTypeIdx.Int, AsInt = i };
+        public static Value FromFloat(float f) => new() { Type = ValueTypeIdx.Float, AsFloat = f };
+        public static Value FromDouble(double d) => new() { Type = ValueTypeIdx.Double, AsDouble = d };
+        public static Value FromEntity(Entity e) => new() { Type = ValueTypeIdx.Entity, AsEntity = e };
+        public static Value FromStringIdx(int i) => new() { Type = ValueTypeIdx.StringIdx, AsInt = i };
 
         public override string ToString() => Type switch
         {
-            ValueType.Null => "null",
-            ValueType.Bool => AsBool ? "true" : "false",
-            ValueType.Int => AsInt.ToString(),
-            ValueType.Float => AsFloat.ToString(),
-            ValueType.Double => AsDouble.ToString(),
-            ValueType.Entity => AsEntity.ToString(),
-            ValueType.StringIdx => AsInt.ToString(),
+            ValueTypeIdx.Null => "null",
+            ValueTypeIdx.Bool => AsBool ? "true" : "false",
+            ValueTypeIdx.Int => AsInt.ToString(),
+            ValueTypeIdx.Float => AsFloat.ToString(),
+            ValueTypeIdx.Double => AsDouble.ToString(),
+            ValueTypeIdx.Entity => AsEntity.ToString(),
+            ValueTypeIdx.StringIdx => AsInt.ToString(),
             _ => throw new Exception("Todo ToString"),
         };
 
         public static explicit operator int(Value v) => v.Type switch
         {
-            ValueType.Int => v.AsInt,
-            ValueType.Bool => v.AsBool ? 1 : 0,
+            ValueTypeIdx.Int => v.AsInt,
+            ValueTypeIdx.Bool => v.AsBool ? 1 : 0,
             _ => throw new Exception("Invalid cast"),
         };
 
         public static explicit operator float(Value v) => v.Type switch
         {
-            ValueType.Int => v.AsInt,
-            ValueType.Float => v.AsFloat,
-            ValueType.Double => (float)v.AsDouble, // #todo emit error if outside range
+            ValueTypeIdx.Int => v.AsInt,
+            ValueTypeIdx.Float => v.AsFloat,
+            ValueTypeIdx.Double => (float)v.AsDouble, // #todo emit error if outside range
             _ => throw new Exception("Invalid cast"),
         };
 
         public static explicit operator double(Value v) => v.Type switch
         {
-            ValueType.Int => v.AsInt,
-            ValueType.Float => v.AsFloat,
-            ValueType.Double => v.AsDouble,
+            ValueTypeIdx.Int => v.AsInt,
+            ValueTypeIdx.Float => v.AsFloat,
+            ValueTypeIdx.Double => v.AsDouble,
             _ => throw new Exception("Invalid cast"),
         };
 
         public static explicit operator bool(Value v) => v.Type switch
         {
-            ValueType.Int => v.AsInt != 0,
-            ValueType.Bool => v.AsBool,
+            ValueTypeIdx.Int => v.AsInt != 0,
+            ValueTypeIdx.Bool => v.AsBool,
             _ => throw new Exception("Invalid cast"),
         };
 
         public static explicit operator Entity(Value v) => v.Type switch
         {
-            ValueType.Entity => v.AsEntity,
+            ValueTypeIdx.Entity => v.AsEntity,
             _ => throw new Exception("Invalid cast"),
         };
     }

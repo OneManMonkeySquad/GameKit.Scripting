@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace GameKit.Scripting.Runtime
+namespace GameKit.Scripting.Internal
 {
     public enum TokenKind
     {
@@ -26,6 +26,7 @@ namespace GameKit.Scripting.Runtime
         Comma,
         Equal, // =
         Plus,
+        Minus,
         CmpEq, // ==
         CmpGt, // >
         CmpLEq, // <=
@@ -33,7 +34,7 @@ namespace GameKit.Scripting.Runtime
         CmpAnd, // &&
 
         Return,
-        Function, // fn
+        Function, // func
         If,
         Else,
 
@@ -53,14 +54,14 @@ namespace GameKit.Scripting.Runtime
         public override string ToString()
         {
             if (Content != null)
-                return $"{TokenTypeToString(Kind)}:{Content}";
+                return $"'{Content}'";
             else
                 return TokenTypeToString(Kind);
         }
 
         public static string TokenTypeToString(TokenKind kind) => kind switch
         {
-            TokenKind.NonTerminal => "Non-Terminal",
+            TokenKind.NonTerminal => "<non-terminal>",
             TokenKind.ParenOpen => "(",
             TokenKind.ParenClose => ")",
             TokenKind.BraceOpen => "{",
@@ -69,12 +70,13 @@ namespace GameKit.Scripting.Runtime
             TokenKind.Comma => ",",
             TokenKind.Equal => "=",
             TokenKind.Plus => "+",
+            TokenKind.Minus => "-",
             TokenKind.CmpGt => ">",
             TokenKind.CmpLEq => "<=",
             TokenKind.Star => "*",
             TokenKind.CmpAnd => "&&",
             TokenKind.Return => "return",
-            TokenKind.Function => "fn",
+            TokenKind.Function => "func",
             TokenKind.If => "if",
             TokenKind.Else => "else",
             TokenKind.String => "<string>",
@@ -82,6 +84,7 @@ namespace GameKit.Scripting.Runtime
             TokenKind.Boolean => "<boolean>",
             TokenKind.Float => "<float>",
             TokenKind.Double => "<double>",
+            TokenKind.CmpEq => "==",
             _ => throw new System.Exception("Missing case"),
         };
     }
@@ -126,15 +129,18 @@ namespace GameKit.Scripting.Runtime
                 }
                 else
                 {
+                    var c = code[i];
+                    var c2 = i + 1 < code.Length ? code[i + 1] : '\0';
+
                     // Start comment?
-                    if (i + 1 < code.Length && code[i] == '/' && code[i + 1] == '/')
+                    if (c == '/' && c2 == '/')
                     {
                         AddNonTerminal(result, code[lastI..i], line);
 
                         inComment = true;
                     }
                     // Double delimiter?
-                    else if (i + 1 < code.Length && code[i] == '&' && code[i + 1] == '&')
+                    else if (c == '&' && c2 == '&')
                     {
                         AddNonTerminal(result, code[lastI..i], line);
 
@@ -143,7 +149,7 @@ namespace GameKit.Scripting.Runtime
                         ++i;
                         lastI = i + 1;
                     }
-                    else if (i + 1 < code.Length && code[i] == '=' && code[i + 1] == '=')
+                    else if (c == '=' && c2 == '=')
                     {
                         AddNonTerminal(result, code[lastI..i], line);
 
@@ -152,7 +158,7 @@ namespace GameKit.Scripting.Runtime
                         ++i;
                         lastI = i + 1;
                     }
-                    else if (i + 1 < code.Length && code[i] == '<' && code[i + 1] == '=')
+                    else if (c == '<' && c2 == '=')
                     {
                         AddNonTerminal(result, code[lastI..i], line);
 
@@ -162,22 +168,23 @@ namespace GameKit.Scripting.Runtime
                         lastI = i + 1;
                     }
                     // Delimiter?
-                    else if (code[i] == '(' || code[i] == ')'
-                        || code[i] == '{' || code[i] == '}'
-                        || code[i] == ';' || code[i] == ',' || code[i] == '=' || code[i] == ' ' || code[i] == '"'
-                        || code[i] == '+' || code[i] == '*' || code[i] == '>')
+                    else if (c == ' ' || c == '\n'
+                        || c == '(' || c == ')'
+                        || c == '{' || c == '}'
+                        || c == ';' || c == ',' || c == '=' || c == '"'
+                        || c == '+' || c == '-' || c == '*' || c == '>')
                     {
                         AddNonTerminal(result, code[lastI..i], line);
 
-                        if (code[i] == '"')
+                        if (c == '"')
                         {
                             inString = true;
                         }
                         else
                         {
-                            if (code[i] != ' ')
+                            if (c != ' ' && c != '\n')
                             {
-                                result.Add(new Token { Kind = GetTokenKind(code[i]), Line = line });
+                                result.Add(new Token { Kind = GetTokenKind(c), Line = line });
                             }
                         }
 
@@ -231,10 +238,16 @@ namespace GameKit.Scripting.Runtime
         {
             var tk = _tokens[_currentTokenIdx];
             if (tk.Kind != kind)
-                throw new System.Exception($"{_fileNameHint}({tk.Line}): Unexpected token (expected '{Token.TokenTypeToString(kind)}', got '{tk}')");
+                throw new System.Exception($"{_fileNameHint}({tk.Line}): Unexpected token (expected {Token.TokenTypeToString(kind)}, got {tk})");
 
             ++_currentTokenIdx;
             return tk;
+        }
+
+        public void ThrowError(string str)
+        {
+            var tk = _tokens[_currentTokenIdx];
+            throw new System.Exception($"{_fileNameHint}({tk.Line}): {str}");
         }
 
         public bool Peek(TokenKind kind)
@@ -265,6 +278,7 @@ namespace GameKit.Scripting.Runtime
                 ',' => TokenKind.Comma,
                 '=' => TokenKind.Equal,
                 '+' => TokenKind.Plus,
+                '-' => TokenKind.Minus,
                 '*' => TokenKind.Star,
                 '>' => TokenKind.CmpGt,
                 _ => throw new System.Exception("Todo"),
@@ -280,40 +294,28 @@ namespace GameKit.Scripting.Runtime
             if (content == "return")
             {
                 tokens.Add(new Token { Kind = TokenKind.Return, Line = line });
-                return;
             }
-
-            if (content == "if")
+            else if (content == "if")
             {
                 tokens.Add(new Token { Kind = TokenKind.If, Line = line });
-                return;
             }
-
-            if (content == "else")
+            else if (content == "else")
             {
                 tokens.Add(new Token { Kind = TokenKind.Else, Line = line });
-                return;
             }
-
-            if (content == "fn")
+            else if (content == "func")
             {
                 tokens.Add(new Token { Kind = TokenKind.Function, Line = line });
-                return;
             }
-
-            if (content == "true" || content == "false")
+            else if (content == "true" || content == "false")
             {
                 tokens.Add(new Token { Kind = TokenKind.Boolean, Content = content, Line = line });
-                return;
             }
-
-            if (int.TryParse(content, out int _))
+            else if (int.TryParse(content, out int _))
             {
                 tokens.Add(new Token { Kind = TokenKind.Integer, Content = content, Line = line });
-                return;
             }
-
-            if (double.TryParse(content, out double d))
+            else if (double.TryParse(content, out double d))
             {
                 if (d >= float.MinValue && d <= float.MaxValue)
                 {
@@ -323,10 +325,11 @@ namespace GameKit.Scripting.Runtime
                 {
                     tokens.Add(new Token { Kind = TokenKind.Double, Content = content, Line = line });
                 }
-                return;
             }
-
-            tokens.Add(new Token { Kind = TokenKind.NonTerminal, Content = content, Line = line });
+            else
+            {
+                tokens.Add(new Token { Kind = TokenKind.NonTerminal, Content = content, Line = line });
+            }
         }
     }
 }

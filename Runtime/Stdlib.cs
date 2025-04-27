@@ -1,6 +1,7 @@
-using System;
+using System.Collections;
 using System.Threading.Tasks;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace GameKit.Scripting.Runtime
 {
@@ -9,14 +10,14 @@ namespace GameKit.Scripting.Runtime
         [Scriptable("sin")]
         public static Value Sin(Value val) => Value.FromDouble(math.sin((double)val));
 
-        static async void Test()
+        static IEnumerator Test()
         {
-            await Test2();
-        }
-
-        static async Task<string> Test2()
-        {
-            return "123";
+            Color c = Color.red;
+            for (float alpha = 1f; alpha >= 0; alpha -= 0.1f)
+            {
+                c.a = alpha;
+                yield return null;
+            }
         }
     }
 }

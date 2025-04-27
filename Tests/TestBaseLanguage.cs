@@ -26,18 +26,18 @@ public class TestBaseLanguage
     [Test]
     public void TestFunc()
     {
-        Assert.AreEqual("", Script.Execute("fn derp() { print(\"S1\"); }"));
+        Assert.AreEqual("", Script.Execute("func derp() { print(\"S1\"); }"));
 
-        Assert.AreEqual("S1", Script.Execute("derp(); fn derp() { print(\"S1\"); }"));
+        Assert.AreEqual("S1", Script.Execute("derp(); func derp() { print(\"S1\"); }"));
 
-        Assert.AreEqual("S1", Script.ExecuteFunc("fn derp() { print(\"S1\"); }", "derp"));
+        Assert.AreEqual("S1", Script.ExecuteFunc("func derp() { print(\"S1\"); }", "derp"));
     }
 
     [Test]
     public void TestFuncReturn()
     {
         Assert.AreEqual("Hello World", Script.Execute(
-              "fn derp() {\n"
+              "func derp() {\n"
             + "  return \"Hello World\";\n"
             + "}\n"
             + "x = derp();\n"
@@ -48,7 +48,7 @@ public class TestBaseLanguage
     public void TestFuncArgument()
     {
         Assert.AreEqual("Hello World", Script.Execute(
-              "fn derp(x) {\n"
+              "func derp(x) {\n"
             + "  print(x);\n"
             + "}\n"
             + "derp(\"Hello World\");"));
@@ -58,7 +58,7 @@ public class TestBaseLanguage
     public void TestFuncArguments()
     {
         Assert.AreEqual("Hello World", Script.Execute(
-              "fn derp(x, y) {\n"
+              "func derp(x, y) {\n"
             + "  print(x);\n"
             + "  print(y);\n"
             + "}\n"
@@ -168,6 +168,14 @@ public class TestBaseLanguage
               "x = 1;\n"
             + "x = x + 2;\n"
             + "print(x);"));
+    }
+
+    [Test]
+    public void TestNegateVariable()
+    {
+        Assert.AreEqual("-1", Script.Execute(
+              "x = 1;\n"
+            + "print(-x);"));
     }
 
     [Test]

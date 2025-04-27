@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
+using GameKit.Scripting.Runtime;
 using GrEmit;
 using UnityEditor;
 using UnityEngine;
 
-namespace GameKit.Scripting.Runtime
+namespace GameKit.Scripting.Internal
 {
     public class CompiledScript
     {
@@ -38,13 +39,13 @@ namespace GameKit.Scripting.Runtime
         {
             var str = val.Type switch
             {
-                ValueType.Null => "null",
-                ValueType.Bool => val.AsBool ? "true" : "false",
-                ValueType.Int => val.AsInt.ToString(),
-                ValueType.Float => val.AsFloat.ToString(),
-                ValueType.Double => val.AsDouble.ToString(),
-                ValueType.Entity => val.AsEntity.ToString(),
-                ValueType.StringIdx => strings[val.AsInt],
+                ValueTypeIdx.Null => "null",
+                ValueTypeIdx.Bool => val.AsBool ? "true" : "false",
+                ValueTypeIdx.Int => val.AsInt.ToString(),
+                ValueTypeIdx.Float => val.AsFloat.ToString(),
+                ValueTypeIdx.Double => val.AsDouble.ToString(),
+                ValueTypeIdx.Entity => val.AsEntity.ToString(),
+                ValueTypeIdx.StringIdx => strings[val.AsInt],
                 _ => throw new Exception("Todo ToString"),
             };
 
@@ -67,15 +68,27 @@ namespace GameKit.Scripting.Runtime
             return (bool)val;
         }
 
+        public static Value Negate(Value value)
+        {
+            return value.Type switch
+            {
+                ValueTypeIdx.Null => Value.Null,
+                ValueTypeIdx.Int => Value.FromInt(-value.AsInt),
+                ValueTypeIdx.Float => Value.FromFloat(-value.AsFloat),
+                ValueTypeIdx.Double => Value.FromDouble(-value.AsDouble),
+                _ => throw new Exception("Unexpected types for Negate " + value.Type),
+            };
+        }
+
         public static Value Add(Value left, Value right)
         {
             return (left.Type, right.Type) switch
             {
-                (ValueType.Int, ValueType.Int) => Value.FromInt(left.AsInt + right.AsInt),
-                (ValueType.Float, ValueType.Float) => Value.FromFloat(left.AsFloat + right.AsFloat),
-                (ValueType.Float, ValueType.Double) => Value.FromDouble(left.AsFloat + right.AsDouble),
-                (ValueType.StringIdx, ValueType.StringIdx) => CreateString(strings[left.AsInt] + strings[right.AsInt]),
-                (ValueType.StringIdx, ValueType.Entity) => CreateString(strings[left.AsInt] + right.AsEntity),
+                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromInt(left.AsInt + right.AsInt),
+                (ValueTypeIdx.Float, ValueTypeIdx.Float) => Value.FromFloat(left.AsFloat + right.AsFloat),
+                (ValueTypeIdx.Float, ValueTypeIdx.Double) => Value.FromDouble(left.AsFloat + right.AsDouble),
+                (ValueTypeIdx.StringIdx, ValueTypeIdx.StringIdx) => CreateString(strings[left.AsInt] + strings[right.AsInt]),
+                (ValueTypeIdx.StringIdx, ValueTypeIdx.Entity) => CreateString(strings[left.AsInt] + right.AsEntity),
                 _ => throw new Exception("Unexpected types for add " + (left.Type, right.Type)),
             };
         }
@@ -84,8 +97,8 @@ namespace GameKit.Scripting.Runtime
         {
             return (left.Type, right.Type) switch
             {
-                (ValueType.Int, ValueType.Int) => Value.FromInt(left.AsInt * right.AsInt),
-                (ValueType.Double, ValueType.Int) => Value.FromDouble(left.AsDouble * right.AsInt),
+                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromInt(left.AsInt * right.AsInt),
+                (ValueTypeIdx.Double, ValueTypeIdx.Int) => Value.FromDouble(left.AsDouble * right.AsInt),
                 _ => throw new Exception("Unexpected types for Mul " + (left.Type, right.Type)),
             };
         }
@@ -94,7 +107,7 @@ namespace GameKit.Scripting.Runtime
         {
             return (left.Type, right.Type) switch
             {
-                (ValueType.Int, ValueType.Int) => Value.FromBool(left.AsInt == right.AsInt),
+                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromBool(left.AsInt == right.AsInt),
                 _ => throw new Exception("Unexpected types for CmpEq " + (left.Type, right.Type)),
             };
         }
@@ -103,7 +116,7 @@ namespace GameKit.Scripting.Runtime
         {
             return (left.Type, right.Type) switch
             {
-                (ValueType.Int, ValueType.Int) => Value.FromBool(left.AsInt > right.AsInt),
+                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromBool(left.AsInt > right.AsInt),
                 _ => throw new Exception("Unexpected types for Greater " + (left.Type, right.Type)),
             };
         }
@@ -112,7 +125,7 @@ namespace GameKit.Scripting.Runtime
         {
             return (left.Type, right.Type) switch
             {
-                (ValueType.Int, ValueType.Int) => Value.FromBool(left.AsInt <= right.AsInt),
+                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromBool(left.AsInt <= right.AsInt),
                 _ => throw new Exception("Unexpected types for LEqual " + (left.Type, right.Type)),
             };
         }
@@ -121,20 +134,9 @@ namespace GameKit.Scripting.Runtime
         {
             return (left.Type, right.Type) switch
             {
-                (ValueType.Bool, ValueType.Bool) => Value.FromBool(left.AsBool && right.AsBool),
+                (ValueTypeIdx.Bool, ValueTypeIdx.Bool) => Value.FromBool(left.AsBool && right.AsBool),
                 _ => throw new Exception("Unexpected types for and " + (left.Type, right.Type)),
             };
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Method)]
-    public class ScriptableAttribute : Attribute
-    {
-        public readonly string Name;
-
-        public ScriptableAttribute(string name)
-        {
-            Name = name;
         }
     }
 
@@ -144,6 +146,7 @@ namespace GameKit.Scripting.Runtime
 
         void RegisterMethods(Dictionary<string, MethodInfo> methods)
         {
+#if UNITY_EDITOR
             var taggedMethods = TypeCache.GetMethodsWithAttribute<ScriptableAttribute>();
             foreach (var taggedMethod in taggedMethods)
             {
@@ -156,6 +159,9 @@ namespace GameKit.Scripting.Runtime
 
                 methods[name] = taggedMethod;
             }
+#else
+            // #todo
+#endif
         }
 
         public CompiledScript Compile(Ast ast)
@@ -292,12 +298,12 @@ namespace GameKit.Scripting.Runtime
                 case ValueExpr var:
                     switch (var.Value.Type)
                     {
-                        case ValueType.Bool:
+                        case ValueTypeIdx.Bool:
                             il.Ldc_I4(var.Value.AsBool ? 1 : 0);
                             il.Call(typeof(Value).GetMethod("FromBool"));
                             break;
 
-                        case ValueType.Int:
+                        case ValueTypeIdx.Int:
                             il.Ldc_I4(var.Value.AsInt);
                             il.Call(typeof(Value).GetMethod("FromInt"));
                             break;
@@ -355,6 +361,11 @@ namespace GameKit.Scripting.Runtime
                             il.Call(typeof(Buildin).GetMethod("LEqual"));
                             break;
                     }
+                    break;
+
+                case NegateExpr var:
+                    VisitExpression(var.Value, il, methods, localVars);
+                    il.Call(typeof(Buildin).GetMethod("Negate"));
                     break;
 
                 case Call call:

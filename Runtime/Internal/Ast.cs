@@ -1,6 +1,7 @@
 using System.Collections.Generic;
+using GameKit.Scripting.Runtime;
 
-namespace GameKit.Scripting.Runtime
+namespace GameKit.Scripting.Internal
 {
     public interface IVisitAst
     {
@@ -188,6 +189,22 @@ namespace GameKit.Scripting.Runtime
         public Value Value;
 
         public override string ToString(string padding) => padding + $"[Value {Value.Type} '{Value}']";
+    }
+
+    public class NegateExpr : Expression
+    {
+        public Expression Value;
+
+        public override void Visit(IVisitAst visitor)
+        {
+            visitor.Expression(this);
+            Value.Visit(visitor);
+        }
+
+        public override string ToString(string padding)
+        {
+            return padding + $"[Negate]\n" + Value.ToString(padding + "\t");
+        }
     }
 
     public abstract class BinaryExpr : Expression

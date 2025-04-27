@@ -1,7 +1,20 @@
+using System;
 using System.IO;
+using GameKit.Scripting.Internal;
 
 namespace GameKit.Scripting.Runtime
 {
+    [AttributeUsage(AttributeTargets.Method)]
+    public class ScriptableAttribute : Attribute
+    {
+        public readonly string Name;
+
+        public ScriptableAttribute(string name)
+        {
+            Name = name;
+        }
+    }
+
     public static class Script
     {
         public static string Execute(string str) => ExecuteFunc(str, "main");

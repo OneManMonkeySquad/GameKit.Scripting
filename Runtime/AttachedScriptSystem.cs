@@ -12,9 +12,12 @@ namespace GameKit.Scripting.Runtime
         {
             foreach (var (script, events, entity) in SystemAPI.Query<AttachedScript, DynamicBuffer<QueuedScriptEvent>>().WithEntityAccess())
             {
+                if (!script.Script.IsCreated)
+                    continue;
+
                 var ast = Script.Compile(ref script.Script.Value);
 
-                ast.Execute("OnUpdate", Value.FromEntity(entity));
+                ast.Execute("on_update", Value.FromEntity(entity));
                 foreach (var evt in events)
                 {
                     ast.Execute(evt.Name.ToString(), Value.FromEntity(entity));

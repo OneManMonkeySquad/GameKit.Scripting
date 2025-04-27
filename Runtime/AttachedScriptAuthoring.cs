@@ -54,7 +54,7 @@ namespace GameKit.Scripting.Runtime
                     Script = result
                 });
                 var buff = AddBuffer<QueuedScriptEvent>(entity);
-                buff.Add(new QueuedScriptEvent { Name = "OnInit" });
+                buff.Add(new QueuedScriptEvent { Name = "on_init" });
             }
         }
     }

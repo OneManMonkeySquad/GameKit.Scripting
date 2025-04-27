@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace GameKit.Scripting.Runtime
+namespace GameKit.Scripting.Internal
 {
     public class ScopeVariableInfo
     {
