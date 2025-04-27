@@ -1,7 +1,6 @@
-using System.Collections;
-using System.Threading.Tasks;
+using GameKit.Scripting.Internal;
+using Unity.Entities;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace GameKit.Scripting.Runtime
 {
@@ -10,14 +9,12 @@ namespace GameKit.Scripting.Runtime
         [Scriptable("sin")]
         public static Value Sin(Value val) => Value.FromDouble(math.sin((double)val));
 
-        static IEnumerator Test()
+        // #todo test
+        [Scriptable("queue_event")]
+        public static void QueueEvent(Value ent, Value name)
         {
-            Color c = Color.red;
-            for (float alpha = 1f; alpha >= 0; alpha -= 0.1f)
-            {
-                c.a = alpha;
-                yield return null;
-            }
+            var buff = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<QueuedScriptEvent>((Entity)ent);
+            buff.Add(new QueuedScriptEvent { Name = Buildin.GetString(name) });
         }
     }
 }

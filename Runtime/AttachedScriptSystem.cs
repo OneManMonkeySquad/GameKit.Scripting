@@ -1,4 +1,5 @@
 using Unity.Entities;
+using UnityEngine;
 
 namespace GameKit.Scripting.Runtime
 {
@@ -15,14 +16,20 @@ namespace GameKit.Scripting.Runtime
                 if (!script.Script.IsCreated)
                     continue;
 
-                var ast = Script.Compile(ref script.Script.Value);
+                var compiledScript = Script.Compile(ref script.Script.Value);
 
-                ast.Execute("on_update", Value.FromEntity(entity));
-                foreach (var evt in events)
+                compiledScript.Execute("on_update", Value.FromEntity(entity));
+
+                int numEvents = events.Length;
+                if (numEvents > 0)
                 {
-                    ast.Execute(evt.Name.ToString(), Value.FromEntity(entity));
+                    foreach (var evt in events)
+                    {
+                        compiledScript.Execute(evt.Name.ToString(), Value.FromEntity(entity));
+                    }
+
+                    events.RemoveRange(0, numEvents); // Instead of clear, execution could have added more events
                 }
-                events.Clear();
             }
         }
     }

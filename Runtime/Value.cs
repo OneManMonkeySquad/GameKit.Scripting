@@ -23,7 +23,7 @@ namespace GameKit.Scripting.Runtime
         public Entity AsEntity;
 
         [FieldOffset(8)]
-        public ValueType Type;
+        public ValueTypeIdx Type;
 
         public static Value FromBool(bool b) => new() { Type = ValueTypeIdx.Bool, AsBool = b };
         public static Value FromInt(int i) => new() { Type = ValueTypeIdx.Int, AsInt = i };

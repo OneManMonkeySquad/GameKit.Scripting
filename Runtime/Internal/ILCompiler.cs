@@ -63,6 +63,14 @@ namespace GameKit.Scripting.Internal
             return Value.FromStringIdx(idx);
         }
 
+        public static string GetString(Value str)
+        {
+            if (str.Type != ValueTypeIdx.StringIdx)
+                throw new Exception("Unexpected types for GetString " + str.Type);
+
+            return strings[str.AsInt];
+        }
+
         public static bool ConvertValueToBool(Value val)
         {
             return (bool)val;
@@ -89,7 +97,7 @@ namespace GameKit.Scripting.Internal
                 (ValueTypeIdx.Float, ValueTypeIdx.Double) => Value.FromDouble(left.AsFloat + right.AsDouble),
                 (ValueTypeIdx.StringIdx, ValueTypeIdx.StringIdx) => CreateString(strings[left.AsInt] + strings[right.AsInt]),
                 (ValueTypeIdx.StringIdx, ValueTypeIdx.Entity) => CreateString(strings[left.AsInt] + right.AsEntity),
-                _ => throw new Exception("Unexpected types for add " + (left.Type, right.Type)),
+                _ => throw new Exception("Unexpected types for Add " + (left.Type, right.Type)),
             };
         }
 

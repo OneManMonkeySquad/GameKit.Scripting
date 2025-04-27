@@ -25,8 +25,8 @@ namespace GameKit.Scripting.Runtime
         {
             ILCompiler.Output = "";
 
-            var ast = Compile(str, fileNameHint);
-            ast.Execute(funcName);
+            var compiledScript = Compile(str, fileNameHint);
+            compiledScript.Execute(funcName);
 
             return ILCompiler.Output;
         }
