@@ -374,7 +374,7 @@ namespace GameKit.Scripting.Internal
                         VisitExpression(arg, il, methods, localVars);
                     }
                     if (!methods.ContainsKey(call.Name))
-                        throw new Exception($"({call.Line}): Function not found '{call.Name}'");
+                        throw new Exception($"({call.SourceLocation}): Function not found '{call.Name}'");
 
                     il.Call(methods[call.Name]);
                     break;

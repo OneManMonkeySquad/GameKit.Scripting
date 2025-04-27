@@ -11,9 +11,23 @@ namespace GameKit.Scripting.Internal
         void ExitScope() { }
     }
 
-    public abstract class Expression
+    public struct SourceLocation
     {
         public int Line;
+        public string File;
+
+        public SourceLocation(string file, int line)
+        {
+            File = file;
+            Line = line;
+        }
+
+        public override string ToString() => $"<a href=\"{File}\" line=\"{Line}\">{File}:{Line}</a>";
+    }
+
+    public abstract class Expression
+    {
+        public SourceLocation SourceLocation;
 
         public virtual void Visit(IVisitAst visitor)
         {

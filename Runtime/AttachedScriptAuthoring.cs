@@ -2,6 +2,7 @@ using UnityEngine;
 using Unity.Entities;
 using Unity.Collections;
 using System;
+using UnityEditor;
 
 namespace GameKit.Scripting.Runtime
 {
@@ -40,7 +41,7 @@ namespace GameKit.Scripting.Runtime
                     var builder = new BlobBuilder(Allocator.Temp);
                     ref BakedScript script = ref builder.ConstructRoot<BakedScript>();
 
-                    script.FileNameHint = authoring.Script.name;
+                    script.FileNameHint = AssetDatabase.GetAssetPath(authoring.Script);
                     builder.AllocateString(ref script.Code, authoring.Script.Code);
 
                     result = builder.CreateBlobAssetReference<BakedScript>(Allocator.Persistent);

@@ -71,7 +71,7 @@ namespace GameKit.Scripting.Internal
             if (expr is VariableExpr var)
             {
                 if (!currentScope.TryFind(var.Name, out var.ScopeInfo))
-                    throw new System.Exception($"${var.Line}: Unknown identifier '{var.Name}'");
+                    throw new System.Exception($"Unknown identifier '{var.Name}' (at {var.SourceLocation})");
             }
         }
 

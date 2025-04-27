@@ -49,7 +49,7 @@ namespace GameKit.Scripting.Internal
     {
         public TokenKind Kind;
         public string Content;
-        public int Line;
+        public SourceLocation SourceLocation;
 
         public override string ToString()
         {
@@ -94,12 +94,8 @@ namespace GameKit.Scripting.Internal
         List<Token> _tokens;
         int _currentTokenIdx;
 
-        string _fileNameHint;
-
         public Lexer(string code, string fileNameHint)
         {
-            _fileNameHint = fileNameHint;
-
             var result = new List<Token>();
 
             int line = 1;
@@ -109,6 +105,8 @@ namespace GameKit.Scripting.Internal
             bool inString = false;
             for (int i = 0; i < code.Length; ++i)
             {
+                var sourceLoc = new SourceLocation(fileNameHint, line);
+
                 if (inComment)
                 {
                     if (code[i] == '\n')
@@ -121,7 +119,7 @@ namespace GameKit.Scripting.Internal
                 {
                     if (code[i] == '"')
                     {
-                        result.Add(new Token { Kind = TokenKind.String, Content = code[lastI..i], Line = line });
+                        result.Add(new Token { Kind = TokenKind.String, Content = code[lastI..i], SourceLocation = sourceLoc });
 
                         lastI = i + 1;
                         inString = false;
@@ -135,34 +133,34 @@ namespace GameKit.Scripting.Internal
                     // Start comment?
                     if (c == '/' && c2 == '/')
                     {
-                        AddNonTerminal(result, code[lastI..i], line);
+                        AddNonTerminal(result, code[lastI..i], sourceLoc);
 
                         inComment = true;
                     }
                     // Double delimiter?
                     else if (c == '&' && c2 == '&')
                     {
-                        AddNonTerminal(result, code[lastI..i], line);
+                        AddNonTerminal(result, code[lastI..i], sourceLoc);
 
-                        result.Add(new Token { Kind = TokenKind.CmpAnd, Line = line });
+                        result.Add(new Token { Kind = TokenKind.CmpAnd, SourceLocation = sourceLoc });
 
                         ++i;
                         lastI = i + 1;
                     }
                     else if (c == '=' && c2 == '=')
                     {
-                        AddNonTerminal(result, code[lastI..i], line);
+                        AddNonTerminal(result, code[lastI..i], sourceLoc);
 
-                        result.Add(new Token { Kind = TokenKind.CmpEq, Line = line });
+                        result.Add(new Token { Kind = TokenKind.CmpEq, SourceLocation = sourceLoc });
 
                         ++i;
                         lastI = i + 1;
                     }
                     else if (c == '<' && c2 == '=')
                     {
-                        AddNonTerminal(result, code[lastI..i], line);
+                        AddNonTerminal(result, code[lastI..i], sourceLoc);
 
-                        result.Add(new Token { Kind = TokenKind.CmpLEq, Line = line });
+                        result.Add(new Token { Kind = TokenKind.CmpLEq, SourceLocation = sourceLoc });
 
                         ++i;
                         lastI = i + 1;
@@ -174,7 +172,7 @@ namespace GameKit.Scripting.Internal
                         || c == ';' || c == ',' || c == '=' || c == '"'
                         || c == '+' || c == '-' || c == '*' || c == '>')
                     {
-                        AddNonTerminal(result, code[lastI..i], line);
+                        AddNonTerminal(result, code[lastI..i], sourceLoc);
 
                         if (c == '"')
                         {
@@ -184,7 +182,7 @@ namespace GameKit.Scripting.Internal
                         {
                             if (c != ' ' && c != '\n')
                             {
-                                result.Add(new Token { Kind = GetTokenKind(c), Line = line });
+                                result.Add(new Token { Kind = GetTokenKind(c), SourceLocation = sourceLoc });
                             }
                         }
 
@@ -201,7 +199,7 @@ namespace GameKit.Scripting.Internal
 
             if (!inComment)
             {
-                AddNonTerminal(result, code[lastI..code.Length], line);
+                AddNonTerminal(result, code[lastI..code.Length], new SourceLocation(fileNameHint, line));
             }
 
 
@@ -212,10 +210,10 @@ namespace GameKit.Scripting.Internal
             int printLine = 0;
             foreach (var tk in _tokens)
             {
-                if (printLine != tk.Line)
+                if (printLine != tk.SourceLocation.Line)
                 {
-                    File.AppendAllText("E:\\tk.txt", $"\n--- line {tk.Line} ---\n");
-                    printLine = tk.Line;
+                    File.AppendAllText("E:\\tk.txt", $"\n--- line {tk.SourceLocation} ---\n");
+                    printLine = tk.SourceLocation.Line;
                 }
 
                 File.AppendAllText("E:\\tk.txt", $"{tk.Kind}\t");
@@ -238,7 +236,7 @@ namespace GameKit.Scripting.Internal
         {
             var tk = _tokens[_currentTokenIdx];
             if (tk.Kind != kind)
-                throw new System.Exception($"{_fileNameHint}({tk.Line}): Unexpected token (expected {Token.TokenTypeToString(kind)}, got {tk})");
+                throw new System.Exception($"{tk.SourceLocation}: Unexpected token (expected {Token.TokenTypeToString(kind)}, got {tk})");
 
             ++_currentTokenIdx;
             return tk;
@@ -247,7 +245,7 @@ namespace GameKit.Scripting.Internal
         public void ThrowError(string str)
         {
             var tk = _tokens[_currentTokenIdx];
-            throw new System.Exception($"{_fileNameHint}({tk.Line}): {str}");
+            throw new System.Exception($"{tk.SourceLocation}: {str}");
         }
 
         public bool Peek(TokenKind kind)
@@ -285,7 +283,7 @@ namespace GameKit.Scripting.Internal
             };
         }
 
-        static void AddNonTerminal(List<Token> tokens, string content, int line)
+        static void AddNonTerminal(List<Token> tokens, string content, SourceLocation sourceLoc)
         {
             content = content.Trim();
             if (content.Length == 0)
@@ -293,42 +291,42 @@ namespace GameKit.Scripting.Internal
 
             if (content == "return")
             {
-                tokens.Add(new Token { Kind = TokenKind.Return, Line = line });
+                tokens.Add(new Token { Kind = TokenKind.Return, SourceLocation = sourceLoc });
             }
             else if (content == "if")
             {
-                tokens.Add(new Token { Kind = TokenKind.If, Line = line });
+                tokens.Add(new Token { Kind = TokenKind.If, SourceLocation = sourceLoc });
             }
             else if (content == "else")
             {
-                tokens.Add(new Token { Kind = TokenKind.Else, Line = line });
+                tokens.Add(new Token { Kind = TokenKind.Else, SourceLocation = sourceLoc });
             }
             else if (content == "func")
             {
-                tokens.Add(new Token { Kind = TokenKind.Function, Line = line });
+                tokens.Add(new Token { Kind = TokenKind.Function, SourceLocation = sourceLoc });
             }
             else if (content == "true" || content == "false")
             {
-                tokens.Add(new Token { Kind = TokenKind.Boolean, Content = content, Line = line });
+                tokens.Add(new Token { Kind = TokenKind.Boolean, Content = content, SourceLocation = sourceLoc });
             }
             else if (int.TryParse(content, out int _))
             {
-                tokens.Add(new Token { Kind = TokenKind.Integer, Content = content, Line = line });
+                tokens.Add(new Token { Kind = TokenKind.Integer, Content = content, SourceLocation = sourceLoc });
             }
             else if (double.TryParse(content, out double d))
             {
                 if (d >= float.MinValue && d <= float.MaxValue)
                 {
-                    tokens.Add(new Token { Kind = TokenKind.Float, Content = content, Line = line });
+                    tokens.Add(new Token { Kind = TokenKind.Float, Content = content, SourceLocation = sourceLoc });
                 }
                 else
                 {
-                    tokens.Add(new Token { Kind = TokenKind.Double, Content = content, Line = line });
+                    tokens.Add(new Token { Kind = TokenKind.Double, Content = content, SourceLocation = sourceLoc });
                 }
             }
             else
             {
-                tokens.Add(new Token { Kind = TokenKind.NonTerminal, Content = content, Line = line });
+                tokens.Add(new Token { Kind = TokenKind.NonTerminal, Content = content, SourceLocation = sourceLoc });
             }
         }
     }

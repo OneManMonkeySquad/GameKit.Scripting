@@ -66,7 +66,7 @@ namespace GameKit.Scripting.Internal
                 var value = ParseExpression();
                 _lexer.Accept(TokenKind.Semicolon);
 
-                return new Return { Value = value, Line = value.Line };
+                return new Return { Value = value, SourceLocation = value.SourceLocation };
             }
 
             if (_lexer.Peek(TokenKind.If))
@@ -84,7 +84,7 @@ namespace GameKit.Scripting.Internal
                 var value = ParseExpression();
                 _lexer.Accept(TokenKind.Semicolon);
 
-                return new Assignment { VariableName = name.Content, Value = value, Line = name.Line };
+                return new Assignment { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
             }
 
             // Call
@@ -95,7 +95,7 @@ namespace GameKit.Scripting.Internal
 
             _lexer.Accept(TokenKind.Semicolon);
 
-            return new Call { Name = name.Content, Arguments = arguments, Line = name.Line };
+            return new Call { Name = name.Content, Arguments = arguments, SourceLocation = name.SourceLocation };
         }
 
         Statement ParseIfStatement()
@@ -122,7 +122,7 @@ namespace GameKit.Scripting.Internal
                 Condition = cond,
                 TrueStatements = statements,
                 FalseStatements = falseStatements,
-                Line = cond.Line
+                SourceLocation = cond.SourceLocation
             };
         }
 
@@ -140,7 +140,7 @@ namespace GameKit.Scripting.Internal
                 Name = name.Content,
                 Statements = statements,
                 Parameters = parameters,
-                Line = name.Line
+                SourceLocation = name.SourceLocation
             };
         }
 
@@ -178,13 +178,13 @@ namespace GameKit.Scripting.Internal
                     case TokenKind.CmpAnd:
                         {
                             var right = ParseRelational();
-                            left = new CmpExpr(CmpType.And) { Left = left, Right = right, Line = left.Line };
+                            left = new CmpExpr(CmpType.And) { Left = left, Right = right, SourceLocation = left.SourceLocation };
                             break;
                         }
                     case TokenKind.CmpEq:
                         {
                             var right = ParseRelational();
-                            left = new CmpExpr(CmpType.Equal) { Left = left, Right = right, Line = left.Line };
+                            left = new CmpExpr(CmpType.Equal) { Left = left, Right = right, SourceLocation = left.SourceLocation };
                             break;
                         }
                 }
@@ -210,10 +210,10 @@ namespace GameKit.Scripting.Internal
                 switch (tk.Kind)
                 {
                     case TokenKind.CmpGt:
-                        left = new CmpExpr(CmpType.Greater) { Left = left, Right = right, Line = left.Line };
+                        left = new CmpExpr(CmpType.Greater) { Left = left, Right = right, SourceLocation = left.SourceLocation };
                         break;
                     case TokenKind.CmpLEq:
-                        left = new CmpExpr(CmpType.LessOrEqual) { Left = left, Right = right, Line = left.Line };
+                        left = new CmpExpr(CmpType.LessOrEqual) { Left = left, Right = right, SourceLocation = left.SourceLocation };
                         break;
                 }
 
@@ -234,7 +234,7 @@ namespace GameKit.Scripting.Internal
                 _lexer.Accept(TokenKind.Plus);
 
                 var right = ParseTerm();
-                left = new AddExpr { Left = left, Right = right, Line = left.Line };
+                left = new AddExpr { Left = left, Right = right, SourceLocation = left.SourceLocation };
             }
 
             return left;
@@ -252,7 +252,7 @@ namespace GameKit.Scripting.Internal
                 _lexer.Accept(TokenKind.Star);
 
                 var right = ParseUnary();
-                left = new MulExpr { Left = left, Right = right, Line = left.Line };
+                left = new MulExpr { Left = left, Right = right, SourceLocation = left.SourceLocation };
             }
 
             return left;
@@ -268,7 +268,7 @@ namespace GameKit.Scripting.Internal
             {
                 var tk = _lexer.Accept(TokenKind.Minus);
 
-                return new NegateExpr { Value = ParsePrimary(), Line = tk.Line };
+                return new NegateExpr { Value = ParsePrimary(), SourceLocation = tk.SourceLocation };
             }
             else
             {
@@ -284,27 +284,27 @@ namespace GameKit.Scripting.Internal
             if (_lexer.Peek(TokenKind.String))
             {
                 var val = _lexer.Accept(TokenKind.String);
-                return new StringExpr { Content = val.Content, Line = val.Line };
+                return new StringExpr { Content = val.Content, SourceLocation = val.SourceLocation };
             }
             else if (_lexer.Peek(TokenKind.Integer))
             {
                 var val = _lexer.Accept(TokenKind.Integer);
-                return new ValueExpr { Value = Value.FromInt(int.Parse(val.Content)), Line = val.Line };
+                return new ValueExpr { Value = Value.FromInt(int.Parse(val.Content)), SourceLocation = val.SourceLocation };
             }
             else if (_lexer.Peek(TokenKind.Boolean))
             {
                 var val = _lexer.Accept(TokenKind.Boolean);
-                return new ValueExpr { Value = Value.FromBool(bool.Parse(val.Content)), Line = val.Line };
+                return new ValueExpr { Value = Value.FromBool(bool.Parse(val.Content)), SourceLocation = val.SourceLocation };
             }
             else if (_lexer.Peek(TokenKind.Float))
             {
                 var val = _lexer.Accept(TokenKind.Float);
-                return new ValueExpr { Value = Value.FromFloat(float.Parse(val.Content)), Line = val.Line };
+                return new ValueExpr { Value = Value.FromFloat(float.Parse(val.Content)), SourceLocation = val.SourceLocation };
             }
             else if (_lexer.Peek(TokenKind.Double))
             {
                 var val = _lexer.Accept(TokenKind.Double);
-                return new ValueExpr { Value = Value.FromDouble(double.Parse(val.Content)), Line = val.Line };
+                return new ValueExpr { Value = Value.FromDouble(double.Parse(val.Content)), SourceLocation = val.SourceLocation };
             }
             else
             {
@@ -314,11 +314,11 @@ namespace GameKit.Scripting.Internal
                 if (_lexer.Peek(TokenKind.ParenOpen))
                 {
                     var arguments = ParseArguments();
-                    return new Call { Name = name.Content, Arguments = arguments, Line = name.Line };
+                    return new Call { Name = name.Content, Arguments = arguments, SourceLocation = name.SourceLocation };
                 }
                 else
                 {
-                    return new VariableExpr { Name = name.Content, Line = name.Line };
+                    return new VariableExpr { Name = name.Content, SourceLocation = name.SourceLocation };
                 }
             }
         }
