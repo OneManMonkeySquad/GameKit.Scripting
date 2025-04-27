@@ -202,6 +202,7 @@ namespace GameKit.Scripting.Internal
                 AddNonTerminal(result, code[lastI..code.Length], new SourceLocation(fileNameHint, line));
             }
 
+            AddSemicolons(result);
 
             _tokens = result;
 
@@ -222,6 +223,28 @@ namespace GameKit.Scripting.Internal
                     File.AppendAllText("E:\\tk.txt", $"'{tk.Content}'");
                 }
                 File.AppendAllText("E:\\tk.txt", $"\n");
+            }
+        }
+
+        static void AddSemicolons(List<Token> tokens)
+        {
+            // See golang for semicolon rules
+
+            for (int i = 0; i < tokens.Count; ++i)
+            {
+                var tk = tokens[i];
+
+                // Note: assume new line at EOF
+                var isLastTokenInLine = i + 1 >= tokens.Count || tk.SourceLocation.Line != tokens[i + 1].SourceLocation.Line;
+                if (isLastTokenInLine)
+                {
+                    if (tk.Kind == TokenKind.ParenClose
+                        || tk.Kind == TokenKind.Return)
+                    {
+                        tokens.Insert(i + 1, new Token { Kind = TokenKind.Semicolon, SourceLocation = tk.SourceLocation });
+                        ++i; // Skip the new token
+                    }
+                }
             }
         }
 

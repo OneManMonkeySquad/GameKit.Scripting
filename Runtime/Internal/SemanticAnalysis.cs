@@ -45,7 +45,7 @@ namespace GameKit.Scripting.Internal
 
         public void Statement(Statement stmt)
         {
-            if (stmt is Return)
+            if (stmt is Return ret && ret.Value != null)
             {
                 HasReturnValue = true;
             }

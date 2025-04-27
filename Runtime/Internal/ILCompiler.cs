@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using GameKit.Scripting.Runtime;
 using GrEmit;
+using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 
@@ -218,9 +219,12 @@ namespace GameKit.Scripting.Internal
                 foreach (var stmt in func.Statements)
                 {
                     VisitStatement(stmt, il, methods, localVars);
-                    il.Nop();
                 }
-                il.Ret();
+
+                if (!func.HasReturnValue)
+                {
+                    il.Ret();
+                }
 
                 File.AppendAllText("E:\\il.txt", il.GetILCode());
             }
@@ -291,7 +295,11 @@ namespace GameKit.Scripting.Internal
                     break;
 
                 case Return ret:
-                    VisitExpression(ret.Value, il, methods, localVars);
+                    if (ret.Value != null)
+                    {
+                        VisitExpression(ret.Value, il, methods, localVars);
+                    }
+                    il.Ret();
                     break;
 
                 default:
@@ -301,6 +309,8 @@ namespace GameKit.Scripting.Internal
 
         void VisitExpression(Expression expr, GroboIL il, Dictionary<string, MethodInfo> methods, Dictionary<string, GroboIL.Local> localVars)
         {
+            Assert.IsNotNull(expr);
+
             switch (expr)
             {
                 case ValueExpr var:

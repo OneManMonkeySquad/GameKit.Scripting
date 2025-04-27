@@ -8,12 +8,12 @@ Custom scripting language running on CLR for Unity. Functional, simple, dynamica
 ## Quickstart
 
 ```cs
-var ast = Script.Compile("print(\"Hello World\");");
+var ast = Script.Compile("print(\"Hello World\")");
 ast.Execute("main");
 ```
 
 ```cs
-var ast = Script.Compile("func my_function() { print(\"Hello World\"); }");
+var ast = Script.Compile("func my_function() {\nprint(\"Hello World\")\n}");
 ast.Execute("my_function");
 ```
 

@@ -9,7 +9,9 @@ namespace GameKit.Scripting.Runtime
         [Scriptable("sin")]
         public static Value Sin(Value val) => Value.FromDouble(math.sin((double)val));
 
-        // #todo test
+        /// <summary>
+        /// Call a scripting function the next frame.
+        /// </summary>
         [Scriptable("queue_event")]
         public static void QueueEvent(Value ent, Value name)
         {

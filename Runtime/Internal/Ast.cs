@@ -139,19 +139,29 @@ namespace GameKit.Scripting.Internal
 
     public class Return : Statement
     {
+        /// <summary>
+        /// May be null!
+        /// </summary>
         public Expression Value;
 
         public override void Visit(IVisitAst visitor)
         {
             visitor.Statement(this);
-            Value.Visit(visitor);
+            Value?.Visit(visitor);
         }
 
         public override string ToString(string padding)
         {
-            var str = padding + $"[Return]\n";
-            str += Value.ToString(padding + "\t");
-            return str;
+            if (Value != null)
+            {
+                var str = padding + $"[Return]\n";
+                str += Value.ToString(padding + "\t");
+                return str;
+            }
+            else
+            {
+                return padding + $"[Return]";
+            }
         }
     }
 

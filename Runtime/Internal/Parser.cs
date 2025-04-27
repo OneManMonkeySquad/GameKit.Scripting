@@ -62,11 +62,18 @@ namespace GameKit.Scripting.Internal
         {
             if (_lexer.Peek(TokenKind.Return))
             {
-                _lexer.Accept(TokenKind.Return);
-                var value = ParseExpression();
+                var tk = _lexer.Accept(TokenKind.Return);
+                if (!_lexer.Peek(TokenKind.Semicolon))
+                {
+                    var value = ParseExpression();
+                    _lexer.Accept(TokenKind.Semicolon);
+
+                    return new Return { Value = value, SourceLocation = value.SourceLocation };
+                }
+
                 _lexer.Accept(TokenKind.Semicolon);
 
-                return new Return { Value = value, SourceLocation = value.SourceLocation };
+                return new Return { SourceLocation = tk.SourceLocation };
             }
 
             if (_lexer.Peek(TokenKind.If))
