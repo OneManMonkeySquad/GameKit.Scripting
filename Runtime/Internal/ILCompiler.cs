@@ -226,7 +226,7 @@ namespace GameKit.Scripting.Internal
                     il.Ret();
                 }
 
-                File.AppendAllText("E:\\il.txt", il.GetILCode());
+                File.AppendAllText("E:\\il.txt", il.GetILCode() + "\n");
             }
 
             return method;
