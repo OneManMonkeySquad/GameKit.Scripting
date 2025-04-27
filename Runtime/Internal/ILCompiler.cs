@@ -148,6 +148,12 @@ namespace GameKit.Scripting.Runtime
             foreach (var taggedMethod in taggedMethods)
             {
                 var name = taggedMethod.GetCustomAttribute<ScriptableAttribute>().Name;
+                if (methods.ContainsKey(name))
+                {
+                    Debug.LogError($"Multiple Scriptable methods with the same name '{name}'. This is not supported.");
+                    continue;
+                }
+
                 methods[name] = taggedMethod;
             }
         }
@@ -356,6 +362,9 @@ namespace GameKit.Scripting.Runtime
                     {
                         VisitExpression(arg, il, methods, localVars);
                     }
+                    if (!methods.ContainsKey(call.Name))
+                        throw new Exception($"({call.Line}): Function not found '{call.Name}'");
+
                     il.Call(methods[call.Name]);
                     break;
 

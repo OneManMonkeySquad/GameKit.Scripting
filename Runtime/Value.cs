@@ -55,6 +55,7 @@ namespace GameKit.Scripting.Runtime
         {
             ValueType.Int => v.AsInt,
             ValueType.Float => v.AsFloat,
+            ValueType.Double => (float)v.AsDouble, // #todo emit error if outside range
             _ => throw new Exception("Invalid cast"),
         };
 

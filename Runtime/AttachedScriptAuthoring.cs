@@ -1,6 +1,7 @@
 using UnityEngine;
 using Unity.Entities;
 using Unity.Collections;
+using System;
 
 namespace GameKit.Scripting.Runtime
 {
@@ -24,6 +25,7 @@ namespace GameKit.Scripting.Runtime
     public class AttachedScriptAuthoring : MonoBehaviour
     {
         public ScriptAsset Script;
+        public TransformUsageFlags TransformUsage;
 
         public class Baker : Baker<AttachedScriptAuthoring>
         {
@@ -46,7 +48,7 @@ namespace GameKit.Scripting.Runtime
                 }
 
                 //
-                var entity = GetEntity(TransformUsageFlags.None);
+                var entity = GetEntity(authoring.TransformUsage);
                 AddComponent(entity, new AttachedScript
                 {
                     Script = result

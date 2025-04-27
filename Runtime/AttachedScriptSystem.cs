@@ -14,6 +14,7 @@ namespace GameKit.Scripting.Runtime
             {
                 var ast = Script.Compile(ref script.Script.Value);
 
+                ast.Execute("OnUpdate", Value.FromEntity(entity));
                 foreach (var evt in events)
                 {
                     ast.Execute(evt.Name.ToString(), Value.FromEntity(entity));
