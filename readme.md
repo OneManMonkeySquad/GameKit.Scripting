@@ -1,5 +1,9 @@
 # GameKit.Scripting
-Custom scripting language running on CLR for Unity.
+Custom scripting language running on CLR for Unity. Functional, simple, dynamically typed. Syntax inspired by Go.
+
+## Features
+- Console errors point to proper source location
+- Easy binding of static C# functions
 
 ## Quickstart
 

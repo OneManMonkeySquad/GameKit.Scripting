@@ -125,8 +125,8 @@ namespace GameKit.Scripting.Internal
 
         public override void Visit(IVisitAst visitor)
         {
-            visitor.Statement(this);
             Value.Visit(visitor);
+            visitor.Statement(this);
         }
 
         public override string ToString(string padding)

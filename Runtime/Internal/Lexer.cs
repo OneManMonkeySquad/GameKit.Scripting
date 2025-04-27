@@ -236,7 +236,7 @@ namespace GameKit.Scripting.Internal
         {
             var tk = _tokens[_currentTokenIdx];
             if (tk.Kind != kind)
-                throw new System.Exception($"{tk.SourceLocation}: Unexpected token (expected {Token.TokenTypeToString(kind)}, got {tk})");
+                throw new System.Exception($"Expected {Token.TokenTypeToString(kind)}, got {tk} (at {tk.SourceLocation})");
 
             ++_currentTokenIdx;
             return tk;
