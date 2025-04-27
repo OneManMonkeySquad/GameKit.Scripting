@@ -70,7 +70,8 @@ namespace GameKit.Scripting.Internal
         {
             if (expr is VariableExpr var)
             {
-                currentScope.TryFind(var.Name, out var.ScopeInfo);
+                if (!currentScope.TryFind(var.Name, out var.ScopeInfo))
+                    throw new System.Exception($"${var.Line}: Unknown identifier '{var.Name}'");
             }
         }
 
