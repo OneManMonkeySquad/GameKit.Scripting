@@ -20,3 +20,6 @@ func on_init(entity) {
 }
 ```
 Add *AttachedScriptAuthoring* component to an authoring GameObject inside a subscene. Set *Script* field to your script. Run game.
+
+## Credits
+https://craftinginterpreters.com

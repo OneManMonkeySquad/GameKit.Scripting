@@ -242,7 +242,10 @@ namespace GameKit.Scripting.Internal
                 {
                     if (tk.Kind == TokenKind.ParenClose
                         || tk.Kind == TokenKind.Return
-                        || tk.Kind == TokenKind.NonTerminal)
+                        || tk.Kind == TokenKind.NonTerminal
+                        || tk.Kind == TokenKind.Integer
+                        || tk.Kind == TokenKind.Float
+                        || tk.Kind == TokenKind.Double)
                     {
                         tokens.Insert(i + 1, new Token { Kind = TokenKind.Semicolon, SourceLocation = tk.SourceLocation });
                         ++i; // Skip the new token
