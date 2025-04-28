@@ -113,6 +113,7 @@ namespace GameKit.Scripting.Internal
                 (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromInt(left.AsInt + right.AsInt),
                 (ValueTypeIdx.Float, ValueTypeIdx.Float) => Value.FromFloat(left.AsFloat + right.AsFloat),
                 (ValueTypeIdx.Float, ValueTypeIdx.Double) => Value.FromDouble(left.AsFloat + right.AsDouble),
+                (ValueTypeIdx.Double, ValueTypeIdx.Float) => Value.FromDouble(left.AsDouble + right.AsFloat),
                 (ValueTypeIdx.StringIdx, ValueTypeIdx.StringIdx) => CreateString(strings[left.AsInt] + strings[right.AsInt]),
                 (ValueTypeIdx.StringIdx, ValueTypeIdx.Entity) => CreateString(strings[left.AsInt] + right.AsEntity),
                 _ => throw new Exception("Unexpected types for Add " + (left.Type, right.Type)),
@@ -408,6 +409,19 @@ namespace GameKit.Scripting.Internal
                             il.Ldc_I4(var.Value.AsInt);
                             il.Call(typeof(Value).GetMethod("FromInt"));
                             break;
+
+                        case ValueTypeIdx.Float:
+                            il.Ldc_R4(var.Value.AsFloat);
+                            il.Call(typeof(Value).GetMethod("FromFloat"));
+                            break;
+
+                        case ValueTypeIdx.Double:
+                            il.Ldc_R8(var.Value.AsDouble);
+                            il.Call(typeof(Value).GetMethod("FromDouble"));
+                            break;
+
+                        default:
+                            throw new Exception("case missing (value)");
                     }
                     break;
 
