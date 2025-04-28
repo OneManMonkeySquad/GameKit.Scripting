@@ -11,6 +11,8 @@ Think Skyrim Papyrus scripts or Unreal blueprints.
 - Script properties with editor support (f.i. for references to other Entities)
 
 ## Quickstart
+*Install package from git URL* in the Unity *Package Manager*: *https://github.com/OneManMonkeySquad/GameKit.Scripting.git*
+
 Create *test.script* file in *Assets* with the following content:
 ```go
 func on_init(entity) {
