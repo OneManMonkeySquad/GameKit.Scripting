@@ -496,6 +496,10 @@ namespace GameKit.Scripting.Internal
                     il.Call(globals.Methods[call.Name]);
                     break;
 
+                case GroupingExpr group:
+                    VisitExpression(group.Value, il, globals, localVars);
+                    break;
+
                 default:
                     throw new Exception("Missing case");
             }

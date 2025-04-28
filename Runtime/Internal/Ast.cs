@@ -225,6 +225,18 @@ namespace GameKit.Scripting.Internal
         public override string ToString(string padding) => padding + $"[Value {Value.Type} '{Value}']";
     }
 
+    public class GroupingExpr : Expression
+    {
+        public Expression Value;
+
+        public override string ToString(string padding)
+        {
+            var str = padding + $"[Grouping]\n";
+            str += Value.ToString(padding + "\t");
+            return str;
+        }
+    }
+
     public class NegateExpr : Expression
     {
         public Expression Value;

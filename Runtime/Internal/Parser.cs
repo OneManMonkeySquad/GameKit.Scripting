@@ -351,6 +351,14 @@ namespace GameKit.Scripting.Internal
                 var val = _lexer.Accept(TokenKind.Double);
                 return new ValueExpr { Value = Value.FromDouble(double.Parse(val.Content)), SourceLocation = val.SourceLocation };
             }
+            else if (_lexer.Peek(TokenKind.ParenOpen))
+            {
+                _lexer.Accept(TokenKind.ParenOpen);
+                var expr = ParseExpression();
+                _lexer.Accept(TokenKind.ParenClose);
+
+                return new GroupingExpr { Value = expr, SourceLocation = expr.SourceLocation };
+            }
             else
             {
                 var name = _lexer.Accept(TokenKind.NonTerminal);

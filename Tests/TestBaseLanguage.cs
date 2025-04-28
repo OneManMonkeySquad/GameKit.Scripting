@@ -193,4 +193,10 @@ public class TestBaseLanguage
             + "    // Comment ^^\n"
             + "print(42); // Comment"));
     }
+
+    [Test]
+    public void TestGrouping()
+    {
+        Assert.AreEqual("42", Script.Execute("print((5 + 5) * 4 + 2); "));
+    }
 }
