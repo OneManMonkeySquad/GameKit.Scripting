@@ -229,6 +229,12 @@ namespace GameKit.Scripting.Internal
     {
         public Expression Value;
 
+        public override void Visit(IVisitStatements visitor)
+        {
+            visitor.Expression(this);
+            Value.Visit(visitor);
+        }
+
         public override string ToString(string padding)
         {
             var str = padding + $"[Grouping]\n";

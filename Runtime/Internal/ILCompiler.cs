@@ -75,11 +75,6 @@ namespace GameKit.Scripting.Internal
             }
         }
 
-        public static Value Test()
-        {
-            return Value.FromEntity(new Entity { Index = 10, Version = 20 });
-        }
-
         public static Value CreateString(string str)
         {
             var idx = strings.Count;
@@ -132,6 +127,7 @@ namespace GameKit.Scripting.Internal
             {
                 (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromInt(left.AsInt * right.AsInt),
                 (ValueTypeIdx.Double, ValueTypeIdx.Int) => Value.FromDouble(left.AsDouble * right.AsInt),
+                (ValueTypeIdx.Double, ValueTypeIdx.Float) => Value.FromDouble(left.AsDouble * right.AsFloat),
                 _ => throw new Exception("Unexpected types for Mul " + (left.Type, right.Type)),
             };
         }
@@ -427,6 +423,7 @@ namespace GameKit.Scripting.Internal
                             break;
 
                         case ValueTypeIdx.Entity:
+                            // #todo do we really need this?
                             var loc = il.DeclareLocal(typeof(Entity));
                             il.Ldloca(loc);
                             il.Initobj(typeof(Entity));
