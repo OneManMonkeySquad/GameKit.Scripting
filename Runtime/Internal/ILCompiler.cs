@@ -136,7 +136,20 @@ namespace GameKit.Scripting.Internal
         {
             return (left.Type, right.Type) switch
             {
+                (ValueTypeIdx.Null, ValueTypeIdx.Null) => Value.FromBool(true),
                 (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromBool(left.AsInt == right.AsInt),
+                (ValueTypeIdx.Entity, ValueTypeIdx.Null) => Value.FromBool(left.AsEntity == Entity.Null),
+                _ => throw new Exception("Unexpected types for CmpEq " + (left.Type, right.Type)),
+            };
+        }
+
+        public static Value CmpNEq(Value left, Value right)
+        {
+            return (left.Type, right.Type) switch
+            {
+                (ValueTypeIdx.Null, ValueTypeIdx.Null) => Value.FromBool(false),
+                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromBool(left.AsInt != right.AsInt),
+                (ValueTypeIdx.Entity, ValueTypeIdx.Null) => Value.FromBool(left.AsEntity != Entity.Null),
                 _ => throw new Exception("Unexpected types for CmpEq " + (left.Type, right.Type)),
             };
         }
@@ -493,6 +506,9 @@ namespace GameKit.Scripting.Internal
                             break;
                         case CmpType.Equal:
                             il.Call(typeof(Buildin).GetMethod("CmpEq"));
+                            break;
+                        case CmpType.NotEqual:
+                            il.Call(typeof(Buildin).GetMethod("CmpNEq"));
                             break;
                         case CmpType.Greater:
                             il.Call(typeof(Buildin).GetMethod("Greater"));

@@ -126,6 +126,25 @@ public class TestBaseLanguage
     }
 
     [Test]
+    public void TestIfEqNull()
+    {
+        Assert.AreEqual("true", Script.Execute("print(null == null); "));
+    }
+
+    [Test]
+    public void TestIfNEq()
+    {
+        Assert.AreEqual("false", Script.Execute("print(1 != 1); "));
+        Assert.AreEqual("true", Script.Execute("print(1 != 2); "));
+    }
+
+    [Test]
+    public void TestIfNEqNull()
+    {
+        Assert.AreEqual("false", Script.Execute("print(null != null); "));
+    }
+
+    [Test]
     public void TestIfLEq()
     {
         Assert.AreEqual("false", Script.Execute("print(2 <= 1); "));
@@ -154,7 +173,7 @@ public class TestBaseLanguage
     [Test]
     public void TestIfChain()
     {
-        Assert.AreEqual("2", Script.Execute("if false { print(1); } else { if true { print(2); } else { print(3);  } }"));
+        Assert.AreEqual("2", Script.Execute("if false { print(1); } else if true { print(2); } else { print(3);  }"));
     }
 
     [Test]

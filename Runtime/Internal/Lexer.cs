@@ -29,6 +29,7 @@ namespace GameKit.Scripting.Internal
         Plus,
         Minus,
         CmpEq, // ==
+        CmpNEq, // !=
         CmpGt, // >
         CmpLEq, // <=
         Star, // *
@@ -77,8 +78,10 @@ namespace GameKit.Scripting.Internal
             TokenKind.Minus => "-",
             TokenKind.CmpGt => ">",
             TokenKind.CmpLEq => "<=",
-            TokenKind.Star => "*",
+            TokenKind.CmpEq => "==",
+            TokenKind.CmpNEq => "!=",
             TokenKind.CmpAnd => "&&",
+            TokenKind.Star => "*",
             TokenKind.Return => "return",
             TokenKind.Function => "func",
             TokenKind.Property => "prop",
@@ -90,7 +93,6 @@ namespace GameKit.Scripting.Internal
             TokenKind.Boolean => "<boolean>",
             TokenKind.Float => "<float>",
             TokenKind.Double => "<double>",
-            TokenKind.CmpEq => "==",
             _ => throw new System.Exception("Missing case"),
         };
     }
@@ -167,6 +169,15 @@ namespace GameKit.Scripting.Internal
                         AddNonTerminal(result, code[lastI..i], sourceLoc);
 
                         result.Add(new Token { Kind = TokenKind.CmpEq, SourceLocation = sourceLoc });
+
+                        ++i;
+                        lastI = i + 1;
+                    }
+                    else if (c == '!' && c2 == '=')
+                    {
+                        AddNonTerminal(result, code[lastI..i], sourceLoc);
+
+                        result.Add(new Token { Kind = TokenKind.CmpNEq, SourceLocation = sourceLoc });
 
                         ++i;
                         lastI = i + 1;
@@ -359,15 +370,18 @@ namespace GameKit.Scripting.Internal
             throw new System.Exception($"{location}: {str}");
         }
 
-        public bool Peek(TokenKind kind)
+        public bool Peek(params TokenKind[] kinds)
         {
             if (_currentTokenIdx >= _tokens.Count)
                 return false;
 
-            if (_tokens[_currentTokenIdx].Kind != kind)
-                return false;
-
-            return true;
+            var tk = _tokens[_currentTokenIdx];
+            foreach (var kind in kinds)
+            {
+                if (tk.Kind == kind)
+                    return true;
+            }
+            return false;
         }
 
         public bool EndOfFile()

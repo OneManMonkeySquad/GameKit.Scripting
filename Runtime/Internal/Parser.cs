@@ -154,7 +154,17 @@ namespace GameKit.Scripting.Internal
             {
                 _lexer.Accept(TokenKind.Else);
 
-                falseStatements = ParseBody();
+                if (_lexer.Peek(TokenKind.If))
+                {
+                    falseStatements = new List<Statement>{
+                        ParseIfStatement()
+                    };
+                }
+                else
+                {
+                    falseStatements = ParseBody();
+                }
+
             }
 
             return new If
@@ -218,13 +228,13 @@ namespace GameKit.Scripting.Internal
         }
 
         /// <summary>
-        /// Relational {( "&&" | "==" ) Relational}
+        /// Relational {( "&&" | "==" | "!=" ) Relational}
         /// </summary>
         Expression ParseAnd()
         {
             var left = ParseRelational();
 
-            while (_lexer.Peek(TokenKind.CmpAnd) || _lexer.Peek(TokenKind.CmpEq))
+            while (_lexer.Peek(TokenKind.CmpAnd, TokenKind.CmpEq, TokenKind.CmpNEq))
             {
                 var tk = _lexer.Consume();
                 switch (tk.Kind)
@@ -239,6 +249,12 @@ namespace GameKit.Scripting.Internal
                         {
                             var right = ParseRelational();
                             left = new CmpExpr(CmpType.Equal) { Left = left, Right = right, SourceLocation = left.SourceLocation };
+                            break;
+                        }
+                    case TokenKind.CmpNEq:
+                        {
+                            var right = ParseRelational();
+                            left = new CmpExpr(CmpType.NotEqual) { Left = left, Right = right, SourceLocation = left.SourceLocation };
                             break;
                         }
                 }

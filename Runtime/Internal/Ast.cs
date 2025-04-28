@@ -311,6 +311,7 @@ namespace GameKit.Scripting.Internal
     {
         And,
         Equal,
+        NotEqual,
         Greater,
         LessOrEqual
     }

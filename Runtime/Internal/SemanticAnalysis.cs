@@ -93,8 +93,7 @@ namespace GameKit.Scripting.Internal
 
                 asn.ScopeInfo = info;
             }
-
-            if (stmt is LocalVariableDecl variableDecl)
+            else if (stmt is LocalVariableDecl variableDecl)
             {
                 if (currentScope.LocalVariables.ContainsKey(variableDecl.VariableName))
                     throw new System.Exception($"Variable already declared '{variableDecl.VariableName}' (at {variableDecl.SourceLocation})");
@@ -102,8 +101,7 @@ namespace GameKit.Scripting.Internal
                 var info = new ScopeVariableInfo { Source = VariableSource.Local };
                 currentScope.LocalVariables.Add(variableDecl.VariableName, info);
             }
-
-            if (stmt is FunctionDecl func)
+            else if (stmt is FunctionDecl func)
             {
                 for (int paramIdx = 0; paramIdx < func.Parameters.Count; paramIdx++)
                 {
