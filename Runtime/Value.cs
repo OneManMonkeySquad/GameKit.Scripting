@@ -48,7 +48,7 @@ namespace GameKit.Scripting.Runtime
         {
             ValueTypeIdx.Int => v.AsInt,
             ValueTypeIdx.Bool => v.AsBool ? 1 : 0,
-            _ => throw new Exception("Invalid cast"),
+            _ => throw new Exception($"Invalid cast {v.Type} -> int"),
         };
 
         public static explicit operator float(Value v) => v.Type switch
@@ -56,7 +56,7 @@ namespace GameKit.Scripting.Runtime
             ValueTypeIdx.Int => v.AsInt,
             ValueTypeIdx.Float => v.AsFloat,
             ValueTypeIdx.Double => (float)v.AsDouble, // #todo emit error if outside range
-            _ => throw new Exception("Invalid cast"),
+            _ => throw new Exception($"Invalid cast {v.Type} -> float"),
         };
 
         public static explicit operator double(Value v) => v.Type switch
@@ -64,20 +64,21 @@ namespace GameKit.Scripting.Runtime
             ValueTypeIdx.Int => v.AsInt,
             ValueTypeIdx.Float => v.AsFloat,
             ValueTypeIdx.Double => v.AsDouble,
-            _ => throw new Exception("Invalid cast"),
+            _ => throw new Exception($"Invalid cast {v.Type} -> double"),
         };
 
         public static explicit operator bool(Value v) => v.Type switch
         {
             ValueTypeIdx.Int => v.AsInt != 0,
             ValueTypeIdx.Bool => v.AsBool,
-            _ => throw new Exception("Invalid cast"),
+            _ => throw new Exception($"Invalid cast {v.Type} -> bool"),
         };
 
         public static explicit operator Entity(Value v) => v.Type switch
         {
             ValueTypeIdx.Entity => v.AsEntity,
-            _ => throw new Exception("Invalid cast"),
+            ValueTypeIdx.Null => Entity.Null,
+            _ => throw new Exception($"Invalid cast {v.Type} -> Entity"),
         };
     }
 }

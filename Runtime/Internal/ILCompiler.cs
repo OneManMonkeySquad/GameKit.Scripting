@@ -6,6 +6,7 @@ using System.Reflection.Emit;
 using GameKit.Scripting.Runtime;
 using GrEmit;
 using NUnit.Framework;
+using Unity.Entities;
 using UnityEditor;
 using UnityEngine;
 
@@ -72,6 +73,11 @@ namespace GameKit.Scripting.Internal
             {
                 ILCompiler.Output += str;
             }
+        }
+
+        public static Value Test()
+        {
+            return Value.FromEntity(new Entity { Index = 10, Version = 20 });
         }
 
         public static Value CreateString(string str)
@@ -299,10 +305,11 @@ namespace GameKit.Scripting.Internal
 
         void VisitStatement(Statement stmt, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
         {
+            Assert.IsNotNull(stmt);
+
             switch (stmt)
             {
-                case PropertyDecl prop:
-                    // #todo
+                case PropertyDecl:
                     break;
 
                 case Call call:
@@ -330,10 +337,8 @@ namespace GameKit.Scripting.Internal
                             il.Stfld(globals.Properties[assignment.VariableName]);
                             break;
                         default:
-                            throw new Exception("missing case");
+                            throw new Exception("missing case (assignment)");
                     }
-
-
                     break;
 
                 case If ifStmt:
@@ -400,6 +405,10 @@ namespace GameKit.Scripting.Internal
                 case ValueExpr var:
                     switch (var.Value.Type)
                     {
+                        case ValueTypeIdx.Null:
+                            il.Ldfld(typeof(Value).GetField("Null"));
+                            break;
+
                         case ValueTypeIdx.Bool:
                             il.Ldc_I4(var.Value.AsBool ? 1 : 0);
                             il.Call(typeof(Value).GetMethod("FromBool"));
@@ -420,8 +429,22 @@ namespace GameKit.Scripting.Internal
                             il.Call(typeof(Value).GetMethod("FromDouble"));
                             break;
 
+                        case ValueTypeIdx.Entity:
+                            var loc = il.DeclareLocal(typeof(Entity));
+                            il.Ldloca(loc);
+                            il.Initobj(typeof(Entity));
+                            il.Ldloca(loc);
+                            il.Ldc_I4(var.Value.AsEntity.Index);
+                            il.Stfld(typeof(Entity).GetField("Index"));
+                            il.Ldloca(loc);
+                            il.Ldc_I4(var.Value.AsEntity.Version);
+                            il.Stfld(typeof(Entity).GetField("Version"));
+                            il.Ldloc(loc);
+                            il.Call(typeof(Value).GetMethod("FromEntity"));
+                            break;
+
                         default:
-                            throw new Exception("case missing (value)");
+                            throw new Exception("case missing (value) ");
                     }
                     break;
 

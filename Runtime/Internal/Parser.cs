@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using GameKit.Scripting.Runtime;
+using Unity.Entities;
 
 namespace GameKit.Scripting.Internal
 {
@@ -326,7 +327,12 @@ namespace GameKit.Scripting.Internal
         /// </summary>
         Expression ParsePrimary()
         {
-            if (_lexer.Peek(TokenKind.String))
+            if (_lexer.Peek(TokenKind.Null))
+            {
+                var tk = _lexer.Accept(TokenKind.Null);
+                return new ValueExpr { Value = Value.FromEntity(Entity.Null), SourceLocation = tk.SourceLocation };
+            }
+            else if (_lexer.Peek(TokenKind.String))
             {
                 var val = _lexer.Accept(TokenKind.String);
                 return new StringExpr { Content = val.Content, SourceLocation = val.SourceLocation };

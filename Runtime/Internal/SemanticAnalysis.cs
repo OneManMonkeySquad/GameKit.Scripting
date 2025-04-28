@@ -87,6 +87,9 @@ namespace GameKit.Scripting.Internal
             {
                 if (currentScope.TryFind(asn.VariableName, out ScopeVariableInfo info))
                 {
+                    if (info.Source == VariableSource.Argument)
+                        throw new System.Exception($"Assigning to argument is not allowed '{asn.VariableName}' (at {asn.SourceLocation})");
+
                     asn.ScopeInfo = info;
                 }
                 else

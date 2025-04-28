@@ -39,6 +39,7 @@ namespace GameKit.Scripting.Internal
         If,
         Else,
 
+        Null, // null
         String,
         Integer,
         Boolean,
@@ -81,6 +82,7 @@ namespace GameKit.Scripting.Internal
             TokenKind.Property => "prop",
             TokenKind.If => "if",
             TokenKind.Else => "else",
+            TokenKind.Null => "null",
             TokenKind.String => "<string>",
             TokenKind.Integer => "<integer>",
             TokenKind.Boolean => "<boolean>",
@@ -228,6 +230,61 @@ namespace GameKit.Scripting.Internal
             }
         }
 
+        static void AddNonTerminal(List<Token> tokens, string content, SourceLocation sourceLoc)
+        {
+            content = content.Trim();
+            if (content.Length == 0)
+                return;
+
+            if (content == "return")
+            {
+                tokens.Add(new Token { Kind = TokenKind.Return, SourceLocation = sourceLoc });
+            }
+            else if (content == "if")
+            {
+                tokens.Add(new Token { Kind = TokenKind.If, SourceLocation = sourceLoc });
+            }
+            else if (content == "else")
+            {
+                tokens.Add(new Token { Kind = TokenKind.Else, SourceLocation = sourceLoc });
+            }
+            else if (content == "func")
+            {
+                tokens.Add(new Token { Kind = TokenKind.Function, SourceLocation = sourceLoc });
+            }
+            else if (content == "prop")
+            {
+                tokens.Add(new Token { Kind = TokenKind.Property, SourceLocation = sourceLoc });
+            }
+            else if (content == "null")
+            {
+                tokens.Add(new Token { Kind = TokenKind.Null, SourceLocation = sourceLoc });
+            }
+            else if (content == "true" || content == "false")
+            {
+                tokens.Add(new Token { Kind = TokenKind.Boolean, Content = content, SourceLocation = sourceLoc });
+            }
+            else if (int.TryParse(content, out int _))
+            {
+                tokens.Add(new Token { Kind = TokenKind.Integer, Content = content, SourceLocation = sourceLoc });
+            }
+            else if (double.TryParse(content, out double d))
+            {
+                if (d >= float.MinValue && d <= float.MaxValue)
+                {
+                    tokens.Add(new Token { Kind = TokenKind.Float, Content = content, SourceLocation = sourceLoc });
+                }
+                else
+                {
+                    tokens.Add(new Token { Kind = TokenKind.Double, Content = content, SourceLocation = sourceLoc });
+                }
+            }
+            else
+            {
+                tokens.Add(new Token { Kind = TokenKind.NonTerminal, Content = content, SourceLocation = sourceLoc });
+            }
+        }
+
         static void AddSemicolons(List<Token> tokens)
         {
             // See golang for semicolon rules
@@ -243,6 +300,8 @@ namespace GameKit.Scripting.Internal
                     if (tk.Kind == TokenKind.ParenClose
                         || tk.Kind == TokenKind.Return
                         || tk.Kind == TokenKind.NonTerminal
+                        || tk.Kind == TokenKind.Null
+                        || tk.Kind == TokenKind.Boolean
                         || tk.Kind == TokenKind.Integer
                         || tk.Kind == TokenKind.Float
                         || tk.Kind == TokenKind.Double)
@@ -322,57 +381,6 @@ namespace GameKit.Scripting.Internal
                 '>' => TokenKind.CmpGt,
                 _ => throw new System.Exception("Todo"),
             };
-        }
-
-        static void AddNonTerminal(List<Token> tokens, string content, SourceLocation sourceLoc)
-        {
-            content = content.Trim();
-            if (content.Length == 0)
-                return;
-
-            if (content == "return")
-            {
-                tokens.Add(new Token { Kind = TokenKind.Return, SourceLocation = sourceLoc });
-            }
-            else if (content == "if")
-            {
-                tokens.Add(new Token { Kind = TokenKind.If, SourceLocation = sourceLoc });
-            }
-            else if (content == "else")
-            {
-                tokens.Add(new Token { Kind = TokenKind.Else, SourceLocation = sourceLoc });
-            }
-            else if (content == "func")
-            {
-                tokens.Add(new Token { Kind = TokenKind.Function, SourceLocation = sourceLoc });
-            }
-            else if (content == "prop")
-            {
-                tokens.Add(new Token { Kind = TokenKind.Property, SourceLocation = sourceLoc });
-            }
-            else if (content == "true" || content == "false")
-            {
-                tokens.Add(new Token { Kind = TokenKind.Boolean, Content = content, SourceLocation = sourceLoc });
-            }
-            else if (int.TryParse(content, out int _))
-            {
-                tokens.Add(new Token { Kind = TokenKind.Integer, Content = content, SourceLocation = sourceLoc });
-            }
-            else if (double.TryParse(content, out double d))
-            {
-                if (d >= float.MinValue && d <= float.MaxValue)
-                {
-                    tokens.Add(new Token { Kind = TokenKind.Float, Content = content, SourceLocation = sourceLoc });
-                }
-                else
-                {
-                    tokens.Add(new Token { Kind = TokenKind.Double, Content = content, SourceLocation = sourceLoc });
-                }
-            }
-            else
-            {
-                tokens.Add(new Token { Kind = TokenKind.NonTerminal, Content = content, SourceLocation = sourceLoc });
-            }
         }
     }
 }
