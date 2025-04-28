@@ -42,6 +42,8 @@ namespace GameKit.Scripting.Runtime
             {
                 if (attachedScript.Script.Value.CodeHash != attachedCompiledScript.CodeHash)
                 {
+                    UnityEngine.Debug.Log("Recompile");
+
                     // Compile new script
                     var compiledScript = Script.Compile(ref attachedScript.Script.Value);
 
@@ -50,6 +52,7 @@ namespace GameKit.Scripting.Runtime
 
                     // Swap the script
                     attachedCompiledScript.Script = compiledScript;
+                    attachedCompiledScript.CodeHash = attachedScript.Script.Value.CodeHash;
                 }
             }
 
