@@ -32,8 +32,10 @@ namespace GameKit.Scripting.Runtime
 
     public class AttachedScriptAuthoring : MonoBehaviour
     {
-        public ScriptAsset Script;
+        public ScriptAsset Asset;
         public TransformUsageFlags TransformUsage;
+
+        public string[] PropertyNames;
         public GameObject[] PropertyValues;
 
         public class Baker : Baker<AttachedScriptAuthoring>
@@ -42,16 +44,16 @@ namespace GameKit.Scripting.Runtime
             {
                 // Bake script
                 BlobAssetReference<BakedScript> result = new();
-                if (authoring.Script != null)
+                if (authoring.Asset != null)
                 {
-                    DependsOn(authoring.Script);
+                    DependsOn(authoring.Asset);
 
                     var builder = new BlobBuilder(Allocator.Temp);
                     ref BakedScript script = ref builder.ConstructRoot<BakedScript>();
 
-                    script.FileNameHint = AssetDatabase.GetAssetPath(authoring.Script);
-                    builder.AllocateString(ref script.Code, authoring.Script.Code);
-                    script.CodeHash = authoring.Script.Code.GetHashCode(); // #todo include property values
+                    script.FileNameHint = AssetDatabase.GetAssetPath(authoring.Asset);
+                    builder.AllocateString(ref script.Code, authoring.Asset.Code);
+                    script.CodeHash = authoring.Asset.Code.GetHashCode(); // #todo include property values
 
                     result = builder.CreateBlobAssetReference<BakedScript>(Allocator.Persistent);
                     builder.Dispose();
@@ -71,9 +73,9 @@ namespace GameKit.Scripting.Runtime
                 for (int i = 0; i < authoring.PropertyValues.Length; ++i)
                 {
                     var value = new PropertyValue { };
+                    value.Name = authoring.PropertyNames[i];
                     if (authoring.PropertyValues[i] != null)
                     {
-                        value.Name = authoring.Script.PropertyNames[i];
                         value.Value = Value.FromEntity(GetEntity(authoring.PropertyValues[i], TransformUsageFlags.None));
                     }
                     propertyBuff.Add(value);

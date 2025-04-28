@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using GameKit.Scripting.Runtime;
 using Unity.Entities;
@@ -15,12 +16,12 @@ namespace GameKit.Scripting
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.PrefixLabel("Script");
-            script.Script = (ScriptAsset)EditorGUILayout.ObjectField(script.Script, typeof(ScriptAsset), allowSceneObjects: false);
+            script.Asset = (ScriptAsset)EditorGUILayout.ObjectField(script.Asset, typeof(ScriptAsset), allowSceneObjects: false);
             EditorGUILayout.EndHorizontal();
 
             script.TransformUsage = (TransformUsageFlags)EditorGUILayout.EnumFlagsField("Transform Usage", script.TransformUsage);
 
-            if (script.Script != null)
+            if (script.Asset != null)
             {
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Properties", EditorStyles.boldLabel);
@@ -28,18 +29,33 @@ namespace GameKit.Scripting
 
                 if (script.PropertyValues == null)
                 {
-                    script.PropertyValues = new GameObject[script.Script.PropertyNames.Count];
+                    script.PropertyValues = new GameObject[script.Asset.PropertyNames.Count];
+                    script.PropertyNames = script.Asset.PropertyNames.ToArray();
                 }
-                else if (script.PropertyValues.Length != script.Script.PropertyNames.Count)
+                else if (script.PropertyValues.Length != script.Asset.PropertyNames.Count)
                 {
-                    // #todo MERGE
-                    script.PropertyValues = new GameObject[script.Script.PropertyNames.Count];
-                }
+                    var newPropertyValues = new GameObject[script.Asset.PropertyNames.Count];
 
-                for (int i = 0; i < script.Script.PropertyNames.Count; i++)
+                    for (int i = 0; i < script.Asset.PropertyNames.Count; ++i)
+                    {
+                        var newName = script.Asset.PropertyNames[i];
+
+                        var oldIdx = Array.IndexOf(script.PropertyNames, newName);
+                        if (oldIdx != -1)
+                        {
+                            newPropertyValues[i] = script.PropertyValues[i];
+                        }
+                    }
+
+                    script.PropertyValues = newPropertyValues;
+                    script.PropertyNames = script.Asset.PropertyNames.ToArray();
+                }
+                // #todo handle other changes: order, types
+
+                for (int i = 0; i < script.Asset.PropertyNames.Count; i++)
                 {
-                    string prop = script.Script.PropertyNames[i];
-                    var newValue = (GameObject)EditorGUILayout.ObjectField(prop, script.PropertyValues[i], typeof(GameObject), allowSceneObjects: true); ;
+                    string prop = script.Asset.PropertyNames[i];
+                    var newValue = (GameObject)EditorGUILayout.ObjectField(prop, script.PropertyValues[i], typeof(GameObject), allowSceneObjects: true);
                     script.PropertyValues[i] = newValue;
                 }
 
