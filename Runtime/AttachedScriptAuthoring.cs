@@ -9,6 +9,7 @@ namespace GameKit.Scripting.Runtime
     {
         public FixedString64Bytes FileNameHint;
         public BlobString Code;
+        public int CodeHash;
     }
 
     public struct AttachedScript : IComponentData
@@ -50,6 +51,7 @@ namespace GameKit.Scripting.Runtime
 
                     script.FileNameHint = AssetDatabase.GetAssetPath(authoring.Script);
                     builder.AllocateString(ref script.Code, authoring.Script.Code);
+                    script.CodeHash = authoring.Script.Code.GetHashCode(); // #todo include property values
 
                     result = builder.CreateBlobAssetReference<BakedScript>(Allocator.Persistent);
                     builder.Dispose();

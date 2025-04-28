@@ -13,29 +13,37 @@ namespace GameKit.Scripting.Internal
 {
     public class CompiledScript
     {
-        Dictionary<string, MethodInfo> Functions;
-        Dictionary<string, FieldInfo> Properties;
+        Dictionary<string, MethodInfo> _functions;
+        Dictionary<string, FieldInfo> _properties;
 
         public CompiledScript(Dictionary<string, MethodInfo> functions, Dictionary<string, FieldInfo> properties)
         {
-            Functions = functions;
-            Properties = properties;
+            _functions = functions;
+            _properties = properties;
         }
 
         public void SetProperty(string name, Value value)
         {
-            Properties[name].SetValue(null, value);
+            _properties[name].SetValue(null, value);
+        }
+
+        public void CopyPropertiesTo(CompiledScript other)
+        {
+            foreach (var entry in _properties)
+            {
+                other.SetProperty(entry.Key, (Value)entry.Value.GetValue(null));
+            }
         }
 
         public void Execute(string name)
         {
-            Delegate d = Functions[name].CreateDelegate(typeof(Action), null);
+            Delegate d = _functions[name].CreateDelegate(typeof(Action), null);
             d.DynamicInvoke();
         }
 
         public void Execute(string name, Value arg0)
         {
-            Delegate d = Functions[name].CreateDelegate(typeof(Action<Value>), null);
+            Delegate d = _functions[name].CreateDelegate(typeof(Action<Value>), null);
             d.DynamicInvoke(arg0);
         }
     }

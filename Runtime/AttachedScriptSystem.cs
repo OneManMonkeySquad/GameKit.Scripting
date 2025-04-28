@@ -6,6 +6,7 @@ namespace GameKit.Scripting.Runtime
     public class AttachedCompiledScript : IComponentData
     {
         public CompiledScript Script;
+        public int CodeHash;
     }
 
     public partial struct AttachedScriptSystem : ISystem
@@ -33,7 +34,23 @@ namespace GameKit.Scripting.Runtime
                 ecb.AddComponent(entity, new AttachedCompiledScript
                 {
                     Script = compiledScript,
+                    CodeHash = attached.Script.Value.CodeHash,
                 });
+            }
+
+            foreach (var (attachedScript, attachedCompiledScript) in SystemAPI.Query<AttachedScript, AttachedCompiledScript>())
+            {
+                if (attachedScript.Script.Value.CodeHash != attachedCompiledScript.CodeHash)
+                {
+                    // Compile new script
+                    var compiledScript = Script.Compile(ref attachedScript.Script.Value);
+
+                    // Copy old property values to new instance
+                    attachedCompiledScript.Script.CopyPropertiesTo(compiledScript);
+
+                    // Swap the script
+                    attachedCompiledScript.Script = compiledScript;
+                }
             }
 
             foreach (var (script, events, entity) in SystemAPI.Query<AttachedCompiledScript, DynamicBuffer<QueuedScriptEvent>>().WithEntityAccess())
