@@ -12,7 +12,7 @@ Think Skyrim Papyrus scripts or Unreal blueprints.
 
 ## Quickstart
 Create *test.script* file in *Assets* with the following content:
-```
+```go
 func on_init(entity) {
     print("on_init " + entity)
 }
