@@ -306,7 +306,6 @@ namespace GameKit.Scripting.Internal
         }
     }
 
-
     public enum CmpType
     {
         And,

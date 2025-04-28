@@ -23,11 +23,10 @@ namespace GameKit.Scripting
                 ctx.SetMainObject(asset);
             }
 
-            asset.Code = code;
-
             try
             {
-                var ast = Script.Parse(asset.Code, ctx.assetPath);
+                var ast = Script.Parse(code, ctx.assetPath);
+                asset.Code = code;
                 asset.PropertyNames = ast.Properties.Select(p => p.Name).ToList();
             }
             catch (Exception)

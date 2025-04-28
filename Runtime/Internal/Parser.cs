@@ -164,7 +164,6 @@ namespace GameKit.Scripting.Internal
                 {
                     falseStatements = ParseBody();
                 }
-
             }
 
             return new If
