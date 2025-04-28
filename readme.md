@@ -24,5 +24,11 @@ func on_init(entity) {
 ```
 Add *AttachedScriptAuthoring* component to an authoring GameObject inside a subscene. Set *Script* field to your script. Run game.
 
+## Ideas
+- Load scripts from StreamingAssets
+- Allow multiple scripts on single Entity
+- Assign scripts to objects at runtime... somehow (tags, ids, names, ...)
+- Have a special syntax to send messages to other objects
+
 ## Credits
 https://craftinginterpreters.com
