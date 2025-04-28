@@ -4,6 +4,7 @@ Custom scripting language running on CLR for Unity. Functional, simple, dynamica
 ## Features
 - Console errors point to proper source location
 - Easy binding of static C# functions
+- Script properties with editor support (f.i. for references to other Entities)
 
 ## Quickstart
 

@@ -19,14 +19,14 @@ namespace GameKit.Scripting.Runtime
     [InternalBufferCapacity(0)]
     public struct PropertyValue : IBufferElementData
     {
-        public FixedString64Bytes Name;
-        public Entity Value;
+        public FixedString32Bytes Name; // #todo this should be baked into BakedScript
+        public Value Value;
     }
 
     [InternalBufferCapacity(0)]
     public struct QueuedScriptEvent : IBufferElementData
     {
-        public FixedString64Bytes Name;
+        public FixedString32Bytes Name;
     }
 
     public class AttachedScriptAuthoring : MonoBehaviour
@@ -72,7 +72,7 @@ namespace GameKit.Scripting.Runtime
                     if (authoring.PropertyValues[i] != null)
                     {
                         value.Name = authoring.Script.PropertyNames[i];
-                        value.Value = GetEntity(authoring.PropertyValues[i], TransformUsageFlags.None);
+                        value.Value = Value.FromEntity(GetEntity(authoring.PropertyValues[i], TransformUsageFlags.None));
                     }
                     propertyBuff.Add(value);
                 }
