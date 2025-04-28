@@ -1,7 +1,6 @@
 using UnityEngine;
 using Unity.Entities;
 using Unity.Collections;
-using System;
 using UnityEditor;
 
 namespace GameKit.Scripting.Runtime
@@ -18,6 +17,13 @@ namespace GameKit.Scripting.Runtime
     }
 
     [InternalBufferCapacity(0)]
+    public struct PropertyValue : IBufferElementData
+    {
+        public FixedString64Bytes Name;
+        public Entity Value;
+    }
+
+    [InternalBufferCapacity(0)]
     public struct QueuedScriptEvent : IBufferElementData
     {
         public FixedString64Bytes Name;
@@ -27,6 +33,7 @@ namespace GameKit.Scripting.Runtime
     {
         public ScriptAsset Script;
         public TransformUsageFlags TransformUsage;
+        public GameObject[] PropertyValues;
 
         public class Baker : Baker<AttachedScriptAuthoring>
         {
@@ -54,8 +61,21 @@ namespace GameKit.Scripting.Runtime
                 {
                     Script = result
                 });
-                var buff = AddBuffer<QueuedScriptEvent>(entity);
-                buff.Add(new QueuedScriptEvent { Name = "on_init" });
+
+                var eventBuff = AddBuffer<QueuedScriptEvent>(entity);
+                eventBuff.Add(new QueuedScriptEvent { Name = "on_init" });
+
+                var propertyBuff = AddBuffer<PropertyValue>(entity);
+                for (int i = 0; i < authoring.PropertyValues.Length; ++i)
+                {
+                    var value = new PropertyValue { };
+                    if (authoring.PropertyValues[i] != null)
+                    {
+                        value.Name = authoring.Script.PropertyNames[i];
+                        value.Value = GetEntity(authoring.PropertyValues[i], TransformUsageFlags.None);
+                    }
+                    propertyBuff.Add(value);
+                }
             }
         }
     }

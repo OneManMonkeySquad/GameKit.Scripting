@@ -1,11 +1,12 @@
 using System;
 using System.IO;
+using System.Linq;
 using GameKit.Scripting.Runtime;
 using UnityEditor;
 using UnityEditor.AssetImporters;
 using UnityEngine;
 
-namespace GameKit.Scripting.Editor
+namespace GameKit.Scripting
 {
     [ScriptedImporter(1, "script", AllowCaching = true)]
     public sealed class ScriptAssetImporter : ScriptedImporter
@@ -26,7 +27,8 @@ namespace GameKit.Scripting.Editor
 
             try
             {
-                Script.Compile(asset.Code, ctx.assetPath);
+                var ast = Script.Parse(asset.Code, ctx.assetPath);
+                asset.PropertyNames = ast.Properties.Select(p => p.Name).ToList();
             }
             catch (Exception)
             { }

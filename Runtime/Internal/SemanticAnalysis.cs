@@ -12,6 +12,7 @@ namespace GameKit.Scripting.Internal
             VariableSource.None => "None",
             VariableSource.Local => "Local",
             VariableSource.Argument => $"Argument:{ArgumentIdx}",
+            VariableSource.Property => "Property",
             _ => throw new System.Exception("case missing"),
         };
     }
@@ -19,7 +20,7 @@ namespace GameKit.Scripting.Internal
     public class Scope
     {
         public Scope ParentScope;
-        public Dictionary<string, ScopeVariableInfo> Variables = new();
+        public Dictionary<string, ScopeVariableInfo> LocalVariables = new();
 
         public Scope(Scope parent = null)
         {
@@ -28,14 +29,14 @@ namespace GameKit.Scripting.Internal
 
         public bool TryFind(string name, out ScopeVariableInfo source)
         {
-            if (Variables.TryGetValue(name, out source))
+            if (LocalVariables.TryGetValue(name, out source))
                 return true;
 
             return ParentScope?.TryFind(name, out source) ?? false;
         }
     }
 
-    class HasReturnValueVisitor : IVisitAst
+    class HasReturnValueVisitor : IVisitStatements
     {
         public bool HasReturnValue = false;
 
@@ -75,12 +76,24 @@ namespace GameKit.Scripting.Internal
             }
         }
 
+        public void Property(PropertyDecl prop)
+        {
+            currentScope.LocalVariables[prop.Name] = new ScopeVariableInfo { Source = VariableSource.Property };
+        }
+
         public void Statement(Statement stmt)
         {
             if (stmt is Assignment asn)
             {
-                // #todo we just assume the variable has the same source but if not...
-                currentScope.Variables[asn.VariableName] = new ScopeVariableInfo { Source = VariableSource.Local };
+                if (currentScope.TryFind(asn.VariableName, out ScopeVariableInfo info))
+                {
+                    asn.ScopeInfo = info;
+                }
+                else
+                {
+                    currentScope.LocalVariables[asn.VariableName] = new ScopeVariableInfo { Source = VariableSource.Local };
+                    asn.ScopeInfo = new ScopeVariableInfo { Source = VariableSource.Local };
+                }
             }
 
             if (stmt is FunctionDecl func)
@@ -88,7 +101,7 @@ namespace GameKit.Scripting.Internal
                 for (int paramIdx = 0; paramIdx < func.Parameters.Count; paramIdx++)
                 {
                     string param = func.Parameters[paramIdx];
-                    currentScope.Variables.Add(param, new ScopeVariableInfo
+                    currentScope.LocalVariables.Add(param, new ScopeVariableInfo
                     {
                         Source = VariableSource.Argument,
                         ArgumentIdx = paramIdx,
@@ -104,18 +117,14 @@ namespace GameKit.Scripting.Internal
         {
             foreach (var func in ast.Functions)
             {
-                {
-                    var visitor = new HasReturnValueVisitor();
-                    func.Visit(visitor);
-                    func.HasReturnValue = visitor.HasReturnValue;
-                    // #todo ensure all branches return a value
-                }
-
-                {
-                    var visitor = new ResolveVariablesVisitor();
-                    func.Visit(visitor);
-                }
+                var visitor = new HasReturnValueVisitor();
+                func.Visit(visitor);
+                func.HasReturnValue = visitor.HasReturnValue;
+                // #todo ensure all branches return a value
             }
+
+            var resolveVariables = new ResolveVariablesVisitor();
+            ast.Visit(resolveVariables);
         }
     }
 }

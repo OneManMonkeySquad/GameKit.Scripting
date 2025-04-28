@@ -42,12 +42,18 @@ namespace GameKit.Scripting.Runtime
 
         public static CompiledScript Compile(string str, string fileNameHint)
         {
-            var parser = new Parser();
-            var ast = parser.ParseToAst(str, fileNameHint);
+            var ast = Parse(str, fileNameHint);
 
             var compiler = new ILCompiler();
             var ca = compiler.Compile(ast);
             return ca;
+        }
+
+        public static Ast Parse(string str, string fileNameHint)
+        {
+            var parser = new Parser();
+            var ast = parser.ParseToAst(str, fileNameHint);
+            return ast;
         }
     }
 }

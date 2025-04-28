@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace GameKit.Scripting.Runtime
@@ -6,5 +7,6 @@ namespace GameKit.Scripting.Runtime
     public sealed class ScriptAsset : ScriptableObject
     {
         public string Code;
+        public List<string> PropertyNames;
     }
 }

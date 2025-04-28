@@ -35,6 +35,7 @@ namespace GameKit.Scripting.Internal
 
         Return,
         Function, // func
+        Property, // prop
         If,
         Else,
 
@@ -77,6 +78,7 @@ namespace GameKit.Scripting.Internal
             TokenKind.CmpAnd => "&&",
             TokenKind.Return => "return",
             TokenKind.Function => "func",
+            TokenKind.Property => "prop",
             TokenKind.If => "if",
             TokenKind.Else => "else",
             TokenKind.String => "<string>",
@@ -239,7 +241,8 @@ namespace GameKit.Scripting.Internal
                 if (isLastTokenInLine)
                 {
                     if (tk.Kind == TokenKind.ParenClose
-                        || tk.Kind == TokenKind.Return)
+                        || tk.Kind == TokenKind.Return
+                        || tk.Kind == TokenKind.NonTerminal)
                     {
                         tokens.Insert(i + 1, new Token { Kind = TokenKind.Semicolon, SourceLocation = tk.SourceLocation });
                         ++i; // Skip the new token
@@ -265,10 +268,22 @@ namespace GameKit.Scripting.Internal
             return tk;
         }
 
+        public Token Peek()
+        {
+            var tk = _tokens[_currentTokenIdx];
+            return tk;
+        }
+
         public void ThrowError(string str)
         {
             var tk = _tokens[_currentTokenIdx];
-            throw new System.Exception($"{tk.SourceLocation}: {str}");
+            ThrowError(str, tk.SourceLocation);
+        }
+
+        public void ThrowError(string str, SourceLocation location)
+        {
+            var tk = _tokens[_currentTokenIdx];
+            throw new System.Exception($"{location}: {str}");
         }
 
         public bool Peek(TokenKind kind)
@@ -327,6 +342,10 @@ namespace GameKit.Scripting.Internal
             else if (content == "func")
             {
                 tokens.Add(new Token { Kind = TokenKind.Function, SourceLocation = sourceLoc });
+            }
+            else if (content == "prop")
+            {
+                tokens.Add(new Token { Kind = TokenKind.Property, SourceLocation = sourceLoc });
             }
             else if (content == "true" || content == "false")
             {

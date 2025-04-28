@@ -14,20 +14,29 @@ namespace GameKit.Scripting.Internal
     public class CompiledScript
     {
         Dictionary<string, MethodInfo> Functions;
+        Dictionary<string, FieldInfo> Properties;
 
-        public CompiledScript(Dictionary<string, MethodInfo> functions)
+        public CompiledScript(Dictionary<string, MethodInfo> functions, Dictionary<string, FieldInfo> properties)
         {
             Functions = functions;
+            Properties = properties;
+        }
+
+        public void SetProperty(string name, Value value)
+        {
+            Properties[name].SetValue(null, value);
         }
 
         public void Execute(string name)
         {
-            Functions[name].Invoke(null, null);
+            Delegate d = Functions[name].CreateDelegate(typeof(Action), null);
+            d.DynamicInvoke();
         }
 
         public void Execute(string name, Value arg0)
         {
-            Functions[name].Invoke(null, new object[] { arg0 });
+            Delegate d = Functions[name].CreateDelegate(typeof(Action<Value>), null);
+            d.DynamicInvoke(arg0);
         }
     }
 
@@ -153,7 +162,92 @@ namespace GameKit.Scripting.Internal
     {
         public static string Output;
 
-        void RegisterMethods(Dictionary<string, MethodInfo> methods)
+        class Globals
+        {
+            public Dictionary<string, MethodInfo> Methods;
+            public Dictionary<string, FieldInfo> Properties;
+        }
+
+        static int numRecompiles = 0;
+
+        public CompiledScript Compile(Ast ast)
+        {
+            File.WriteAllText("E:\\il.txt", "");
+
+            ++numRecompiles;
+
+            var asmName = new AssemblyName("MyDynamicAssembly");
+            var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.RunAndCollect);
+            var modBuilder = asmBuilder.DefineDynamicModule("MyModule");
+            var typeBuilder = modBuilder.DefineType(
+                "MyDynamicType" + numRecompiles,                   // Type name
+                TypeAttributes.Public | TypeAttributes.Class // Modifiers (public class)
+            );
+
+            var properties = new Dictionary<string, FieldInfo>();
+            foreach (var prop in ast.Properties)
+            {
+                var staticField = typeBuilder.DefineField(
+                      prop.Name,
+                      typeof(Value),
+                      FieldAttributes.Public | FieldAttributes.Static
+                );
+                properties.Add(prop.Name, staticField);
+            }
+
+            var methods = new Dictionary<string, MethodInfo>();
+            RegisterScriptableFunctions(methods);
+
+            foreach (var func in ast.Functions)
+            {
+                var parameters = new Type[func.Parameters.Count];
+                for (int i = 0; i < func.Parameters.Count; ++i)
+                {
+                    parameters[i] = typeof(Value);
+                }
+
+                Type resultType = null;
+                if (func.HasReturnValue)
+                {
+                    resultType = typeof(Value);
+                }
+
+                var mb = typeBuilder.DefineMethod(func.Name, MethodAttributes.Public | MethodAttributes.Static, resultType, parameters);
+
+
+
+                methods[func.Name] = mb;
+            }
+
+            var globals = new Globals
+            {
+                Methods = methods,
+                Properties = properties,
+            };
+            foreach (var func in ast.Functions)
+            {
+                var method = methods[func.Name];
+                EmitFunctionIL(func, (MethodBuilder)method, globals);
+            }
+
+            var myType = typeBuilder.CreateType();
+
+            var methods2 = new Dictionary<string, MethodInfo>();
+            var properties2 = new Dictionary<string, FieldInfo>();
+            foreach (var func in ast.Functions)
+            {
+                methods2.Add(func.Name, myType.GetMethod(func.Name));
+            }
+            foreach (var prop in ast.Properties)
+            {
+                properties2.Add(prop.Name, myType.GetField(prop.Name));
+            }
+
+            var ca = new CompiledScript(methods2, properties2);
+            return ca;
+        }
+
+        void RegisterScriptableFunctions(Dictionary<string, MethodInfo> methods)
         {
 #if UNITY_EDITOR
             var taggedMethods = TypeCache.GetMethodsWithAttribute<ScriptableAttribute>();
@@ -173,43 +267,7 @@ namespace GameKit.Scripting.Internal
 #endif
         }
 
-        public CompiledScript Compile(Ast ast)
-        {
-            File.WriteAllText("E:\\il.txt", "");
-
-            var methods = new Dictionary<string, MethodInfo>();
-            foreach (var func in ast.Functions)
-            {
-                var parameters = new Type[func.Parameters.Count];
-                for (int i = 0; i < func.Parameters.Count; ++i)
-                {
-                    parameters[i] = typeof(Value);
-                }
-
-                Type resultType = null;
-                if (func.HasReturnValue)
-                {
-                    resultType = typeof(Value);
-                }
-
-                var method = new DynamicMethod(func.Name, resultType, parameters, typeof(ILCompiler));
-
-                methods[func.Name] = method;
-            }
-
-            RegisterMethods(methods);
-
-            foreach (var func in ast.Functions)
-            {
-                var method = methods[func.Name];
-                EmitIL(func, (DynamicMethod)method, methods);
-            }
-
-            var ca = new CompiledScript(methods);
-            return ca;
-        }
-
-        DynamicMethod EmitIL(FunctionDecl func, DynamicMethod method, Dictionary<string, MethodInfo> methods)
+        void EmitFunctionIL(FunctionDecl func, MethodBuilder method, Globals globals)
         {
             File.AppendAllText("E:\\il.txt", $"=== {func} ===\n");
 
@@ -218,7 +276,7 @@ namespace GameKit.Scripting.Internal
             {
                 foreach (var stmt in func.Statements)
                 {
-                    VisitStatement(stmt, il, methods, localVars);
+                    VisitStatement(stmt, il, globals, localVars);
                 }
 
                 if (!func.HasReturnValue)
@@ -228,34 +286,49 @@ namespace GameKit.Scripting.Internal
 
                 File.AppendAllText("E:\\il.txt", il.GetILCode() + "\n");
             }
-
-            return method;
         }
 
-        void VisitStatement(Statement stmt, GroboIL il, Dictionary<string, MethodInfo> methods, Dictionary<string, GroboIL.Local> localVars)
+        void VisitStatement(Statement stmt, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
         {
             switch (stmt)
             {
+                case PropertyDecl prop:
+                    // #todo
+                    break;
+
                 case Call call:
                     foreach (var arg in call.Arguments)
                     {
-                        VisitExpression(arg, il, methods, localVars);
+                        VisitExpression(arg, il, globals, localVars);
                     }
-                    il.Call(methods[call.Name]);
+                    il.Call(globals.Methods[call.Name]);
                     break;
 
                 case Assignment assignment:
-                    VisitExpression(assignment.Value, il, methods, localVars);
-                    if (!localVars.TryGetValue(assignment.VariableName, out var local))
+                    VisitExpression(assignment.Value, il, globals, localVars);
+
+                    switch (assignment.ScopeInfo.Source)
                     {
-                        local = il.DeclareLocal(typeof(Value));
-                        localVars.Add(assignment.VariableName, local);
+                        case VariableSource.Local:
+                            if (!localVars.TryGetValue(assignment.VariableName, out var local))
+                            {
+                                local = il.DeclareLocal(typeof(Value));
+                                localVars.Add(assignment.VariableName, local);
+                            }
+                            il.Stloc(local);
+                            break;
+                        case VariableSource.Property:
+                            il.Stfld(globals.Properties[assignment.VariableName]);
+                            break;
+                        default:
+                            throw new Exception("missing case");
                     }
-                    il.Stloc(local);
+
+
                     break;
 
                 case If ifStmt:
-                    VisitExpression(ifStmt.Condition, il, methods, localVars);
+                    VisitExpression(ifStmt.Condition, il, globals, localVars);
                     il.Call(typeof(Buildin).GetMethod("ConvertValueToBool"));
                     if (ifStmt.FalseStatements != null)
                     {
@@ -265,7 +338,7 @@ namespace GameKit.Scripting.Internal
                         il.Brfalse(conditionWasFalse);
                         foreach (var stmt2 in ifStmt.TrueStatements)
                         {
-                            VisitStatement(stmt2, il, methods, localVars);
+                            VisitStatement(stmt2, il, globals, localVars);
                             il.Nop();
                         }
                         il.Br(conditionWasTrue);
@@ -273,7 +346,7 @@ namespace GameKit.Scripting.Internal
                         il.MarkLabel(conditionWasFalse);
                         foreach (var stmt2 in ifStmt.FalseStatements)
                         {
-                            VisitStatement(stmt2, il, methods, localVars);
+                            VisitStatement(stmt2, il, globals, localVars);
                             il.Nop();
                         }
 
@@ -286,7 +359,7 @@ namespace GameKit.Scripting.Internal
                         il.Brfalse(conditionWasFalse);
                         foreach (var stmt2 in ifStmt.TrueStatements)
                         {
-                            VisitStatement(stmt2, il, methods, localVars);
+                            VisitStatement(stmt2, il, globals, localVars);
                             il.Nop();
                         }
 
@@ -297,17 +370,19 @@ namespace GameKit.Scripting.Internal
                 case Return ret:
                     if (ret.Value != null)
                     {
-                        VisitExpression(ret.Value, il, methods, localVars);
+                        VisitExpression(ret.Value, il, globals, localVars);
                     }
                     il.Ret();
                     break;
 
                 default:
-                    throw new Exception("Missing case");
+                    throw new Exception("missing case");
             }
         }
 
-        void VisitExpression(Expression expr, GroboIL il, Dictionary<string, MethodInfo> methods, Dictionary<string, GroboIL.Local> localVars)
+        void VisitExpression(Expression expr, GroboIL il,
+            Globals globals,
+            Dictionary<string, GroboIL.Local> localVars)
         {
             Assert.IsNotNull(expr);
 
@@ -331,9 +406,6 @@ namespace GameKit.Scripting.Internal
                 case VariableExpr var:
                     switch (var.ScopeInfo.Source)
                     {
-                        case VariableSource.None:
-                            // ???
-                            break;
                         case VariableSource.Local:
                             var local = localVars[var.Name];
                             il.Ldloc(local);
@@ -341,6 +413,11 @@ namespace GameKit.Scripting.Internal
                         case VariableSource.Argument:
                             il.Ldarg(var.ScopeInfo.ArgumentIdx);
                             break;
+                        case VariableSource.Property:
+                            il.Ldfld(globals.Properties[var.Name]);
+                            break;
+                        default:
+                            throw new Exception("case missing (variable source)");
                     }
                     break;
 
@@ -350,20 +427,20 @@ namespace GameKit.Scripting.Internal
                     break;
 
                 case AddExpr var:
-                    VisitExpression(var.Left, il, methods, localVars);
-                    VisitExpression(var.Right, il, methods, localVars);
+                    VisitExpression(var.Left, il, globals, localVars);
+                    VisitExpression(var.Right, il, globals, localVars);
                     il.Call(typeof(Buildin).GetMethod("Add"));
                     break;
 
                 case MulExpr var:
-                    VisitExpression(var.Left, il, methods, localVars);
-                    VisitExpression(var.Right, il, methods, localVars);
+                    VisitExpression(var.Left, il, globals, localVars);
+                    VisitExpression(var.Right, il, globals, localVars);
                     il.Call(typeof(Buildin).GetMethod("Mul"));
                     break;
 
                 case CmpExpr cmp:
-                    VisitExpression(cmp.Left, il, methods, localVars);
-                    VisitExpression(cmp.Right, il, methods, localVars);
+                    VisitExpression(cmp.Left, il, globals, localVars);
+                    VisitExpression(cmp.Right, il, globals, localVars);
                     switch (cmp.Type)
                     {
                         case CmpType.And:
@@ -382,19 +459,19 @@ namespace GameKit.Scripting.Internal
                     break;
 
                 case NegateExpr var:
-                    VisitExpression(var.Value, il, methods, localVars);
+                    VisitExpression(var.Value, il, globals, localVars);
                     il.Call(typeof(Buildin).GetMethod("Negate"));
                     break;
 
                 case Call call:
                     foreach (var arg in call.Arguments)
                     {
-                        VisitExpression(arg, il, methods, localVars);
+                        VisitExpression(arg, il, globals, localVars);
                     }
-                    if (!methods.ContainsKey(call.Name))
+                    if (!globals.Methods.ContainsKey(call.Name))
                         throw new Exception($"({call.SourceLocation}): Function not found '{call.Name}'");
 
-                    il.Call(methods[call.Name]);
+                    il.Call(globals.Methods[call.Name]);
                     break;
 
                 default:

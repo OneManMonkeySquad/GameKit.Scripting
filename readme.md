@@ -13,7 +13,7 @@ ast.Execute("main");
 ```
 
 ```cs
-var ast = Script.Compile("func my_function() {\nprint(\"Hello World\")\n}");
+var ast = Script.Compile("func my_function() { print(\"Hello World\"); }");
 ast.Execute("my_function");
 ```
 

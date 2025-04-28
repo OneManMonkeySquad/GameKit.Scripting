@@ -18,14 +18,19 @@ namespace GameKit.Scripting.Internal
             _lexer = new Lexer(str, fileNameHint);
 
             var functions = new List<FunctionDecl>();
+            var properties = new List<PropertyDecl>();
 
             var statements = new List<Statement>();
             while (!_lexer.EndOfFile())
             {
                 var stmt = ParseStatement();
-                if (stmt is FunctionDecl f)
+                if (stmt is FunctionDecl func)
                 {
-                    functions.Add(f);
+                    functions.Add(func);
+                }
+                else if (stmt is PropertyDecl prop)
+                {
+                    properties.Add(prop);
                 }
                 else
                 {
@@ -33,13 +38,17 @@ namespace GameKit.Scripting.Internal
                 }
             }
 
-            functions.Add(new FunctionDecl { Name = "main", Statements = statements, Parameters = new() });
+            if (statements.Count > 0)
+            {
+                functions.Add(new FunctionDecl { Name = "main", Statements = statements, Parameters = new() });
+            }
 
             //
             var ast = new Ast
             {
                 FileNameHint = fileNameHint,
-                Functions = functions
+                Functions = functions,
+                Properties = properties,
             };
 
             var sa = new SemanticAnalysis();
@@ -53,6 +62,7 @@ namespace GameKit.Scripting.Internal
                 {
                     File.AppendAllText("E:\\stmt.txt", $"{st.ToString("")}\n");
                 }
+                File.AppendAllText("E:\\stmt.txt", "\n");
             }
 
             return ast;
@@ -60,6 +70,9 @@ namespace GameKit.Scripting.Internal
 
         Statement ParseStatement()
         {
+            if (_lexer.Peek(TokenKind.Property))
+                return ParseProperty();
+
             if (_lexer.Peek(TokenKind.Return))
                 return ParseReturn();
 
@@ -90,6 +103,14 @@ namespace GameKit.Scripting.Internal
             _lexer.Accept(TokenKind.Semicolon);
 
             return new Call { Name = name.Content, Arguments = arguments, SourceLocation = name.SourceLocation };
+        }
+
+        Statement ParseProperty()
+        {
+            var tk = _lexer.Accept(TokenKind.Property);
+            var name = _lexer.Accept(TokenKind.NonTerminal);
+            _lexer.Accept(TokenKind.Semicolon);
+            return new PropertyDecl { Name = name.Content, SourceLocation = tk.SourceLocation };
         }
 
         Statement ParseReturn()
@@ -156,12 +177,26 @@ namespace GameKit.Scripting.Internal
 
         List<Statement> ParseBody()
         {
-            _lexer.Accept(TokenKind.BraceOpen);
+            var tk = _lexer.Accept(TokenKind.BraceOpen);
 
             var statements = new List<Statement>();
             while (!_lexer.Peek(TokenKind.BraceClose))
             {
-                statements.Add(ParseStatement());
+                var firstTk = _lexer.Peek();
+
+                var stmt = ParseStatement();
+                if (stmt is FunctionDecl)
+                {
+                    _lexer.ThrowError("Local functions are not supported", firstTk.SourceLocation);
+                }
+                else if (stmt is PropertyDecl)
+                {
+                    _lexer.ThrowError("Local properties are not supported", firstTk.SourceLocation);
+                }
+                else
+                {
+                    statements.Add(stmt);
+                }
             }
             _lexer.Accept(TokenKind.BraceClose);
 

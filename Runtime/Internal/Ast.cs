@@ -3,12 +3,17 @@ using GameKit.Scripting.Runtime;
 
 namespace GameKit.Scripting.Internal
 {
-    public interface IVisitAst
+    public interface IVisitStatements
     {
         void Statement(Statement stmt);
         void Expression(Expression expr);
         void EnterScope() { }
         void ExitScope() { }
+    }
+
+    public interface IVisitAst : IVisitStatements
+    {
+        void Property(PropertyDecl prop);
     }
 
     public struct SourceLocation
@@ -29,20 +34,17 @@ namespace GameKit.Scripting.Internal
     {
         public SourceLocation SourceLocation;
 
-        public virtual void Visit(IVisitAst visitor)
+        public virtual void Visit(IVisitStatements visitor)
         {
             visitor.Expression(this);
         }
 
-        public virtual string ToString(string padding)
-        {
-            return "Expression";
-        }
+        public abstract string ToString(string padding);
     }
 
     public abstract class Statement : Expression
     {
-        public override void Visit(IVisitAst visitor)
+        public override void Visit(IVisitStatements visitor)
         {
             visitor.Statement(this);
         }
@@ -53,7 +55,7 @@ namespace GameKit.Scripting.Internal
         public string Name;
         public List<Expression> Arguments;
 
-        public override void Visit(IVisitAst visitor)
+        public override void Visit(IVisitStatements visitor)
         {
             visitor.Statement(this);
             foreach (var arg in Arguments)
@@ -79,7 +81,7 @@ namespace GameKit.Scripting.Internal
         public List<Statement> TrueStatements;
         public List<Statement> FalseStatements;
 
-        public override void Visit(IVisitAst visitor)
+        public override void Visit(IVisitStatements visitor)
         {
             visitor.Statement(this);
             Condition.Visit(visitor);
@@ -122,8 +124,9 @@ namespace GameKit.Scripting.Internal
     {
         public string VariableName;
         public Expression Value;
+        public ScopeVariableInfo ScopeInfo;
 
-        public override void Visit(IVisitAst visitor)
+        public override void Visit(IVisitStatements visitor)
         {
             Value.Visit(visitor);
             visitor.Statement(this);
@@ -131,7 +134,7 @@ namespace GameKit.Scripting.Internal
 
         public override string ToString(string padding)
         {
-            var str = padding + $"[Assignment '{VariableName}']\n";
+            var str = padding + $"[Assignment {ScopeInfo} '{VariableName}']\n";
             str += Value.ToString(padding + "\t");
             return str;
         }
@@ -144,7 +147,7 @@ namespace GameKit.Scripting.Internal
         /// </summary>
         public Expression Value;
 
-        public override void Visit(IVisitAst visitor)
+        public override void Visit(IVisitStatements visitor)
         {
             visitor.Statement(this);
             Value?.Visit(visitor);
@@ -165,6 +168,13 @@ namespace GameKit.Scripting.Internal
         }
     }
 
+    public class PropertyDecl : Statement
+    {
+        public string Name;
+
+        public override string ToString(string padding) => $"[Property '{Name}']";
+    }
+
     public class FunctionDecl : Statement
     {
         public string Name;
@@ -172,7 +182,7 @@ namespace GameKit.Scripting.Internal
         public List<string> Parameters;
         public bool HasReturnValue;
 
-        public override void Visit(IVisitAst visitor)
+        public override void Visit(IVisitStatements visitor)
         {
             visitor.EnterScope();
             visitor.Statement(this);
@@ -219,7 +229,7 @@ namespace GameKit.Scripting.Internal
     {
         public Expression Value;
 
-        public override void Visit(IVisitAst visitor)
+        public override void Visit(IVisitStatements visitor)
         {
             visitor.Expression(this);
             Value.Visit(visitor);
@@ -235,7 +245,7 @@ namespace GameKit.Scripting.Internal
     {
         public Expression Left, Right;
 
-        public override void Visit(IVisitAst visitor)
+        public override void Visit(IVisitStatements visitor)
         {
             visitor.Expression(this);
             Left.Visit(visitor);
@@ -284,7 +294,7 @@ namespace GameKit.Scripting.Internal
     }
 
 
-    public enum VariableSource { None, Local, Argument }
+    public enum VariableSource { None, Local, Argument, Property }
 
     public class VariableExpr : Expression
     {
@@ -299,5 +309,20 @@ namespace GameKit.Scripting.Internal
     {
         public string FileNameHint;
         public List<FunctionDecl> Functions;
+        public List<PropertyDecl> Properties;
+
+        public void Visit(IVisitAst visitor)
+        {
+            visitor.EnterScope();
+            foreach (var prop in Properties)
+            {
+                visitor.Property(prop);
+            }
+            foreach (var func in Functions)
+            {
+                func.Visit(visitor);
+            }
+            visitor.ExitScope();
+        }
     }
 }
