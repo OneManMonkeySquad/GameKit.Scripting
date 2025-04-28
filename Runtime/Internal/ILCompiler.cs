@@ -333,21 +333,11 @@ namespace GameKit.Scripting.Internal
                     }
                     break;
 
-                case VariableDecl variableDecl:
+                case LocalVariableDecl variableDecl:
                     VisitExpression(variableDecl.Value, il, globals, localVars);
-                    switch (variableDecl.ScopeInfo.Source)
-                    {
-                        case VariableSource.Local:
-                            if (!localVars.TryGetValue(variableDecl.VariableName, out var local))
-                            {
-                                local = il.DeclareLocal(typeof(Value));
-                                localVars.Add(variableDecl.VariableName, local);
-                            }
-                            il.Stloc(local);
-                            break;
-                        default:
-                            throw new Exception("missing case (variable decl)");
-                    }
+                    var local2 = il.DeclareLocal(typeof(Value));
+                    localVars.Add(variableDecl.VariableName, local2);
+                    il.Stloc(local2);
                     break;
 
                 case If ifStmt:

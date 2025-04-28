@@ -120,11 +120,10 @@ namespace GameKit.Scripting.Internal
         }
     }
 
-    public class VariableDecl : Statement
+    public class LocalVariableDecl : Statement
     {
         public string VariableName;
         public Expression Value;
-        public ScopeVariableInfo ScopeInfo;
 
         public override void Visit(IVisitStatements visitor)
         {
@@ -134,7 +133,7 @@ namespace GameKit.Scripting.Internal
 
         public override string ToString(string padding)
         {
-            var str = padding + $"[VariableDcl {ScopeInfo} '{VariableName}']\n";
+            var str = padding + $"[LocalVariableDecl '{VariableName}']\n";
             str += Value.ToString(padding + "\t");
             return str;
         }

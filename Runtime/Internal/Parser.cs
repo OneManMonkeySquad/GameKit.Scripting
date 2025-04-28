@@ -100,7 +100,7 @@ namespace GameKit.Scripting.Internal
                 _lexer.Accept(TokenKind.DeclareVariable);
                 var value = ParseExpression();
                 _lexer.Accept(TokenKind.Semicolon);
-                return new VariableDecl { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
+                return new LocalVariableDecl { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
             }
 
             // Call
