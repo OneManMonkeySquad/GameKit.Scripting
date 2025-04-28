@@ -96,13 +96,19 @@ public class TestBaseLanguage
     [Test]
     public void TestPlusCmpOperatorPrecedence()
     {
-        Assert.AreEqual("true", Script.Execute("print(2 + 1 > 2);"));
+        Assert.AreEqual("true", Script.Execute("print(2 + 1 > 2)"));
     }
 
     [Test]
     public void TestAddStrings()
     {
-        Assert.AreEqual("Hello World", Script.Execute("print(\"Hello\" + \" World\");"));
+        Assert.AreEqual("Hello World", Script.Execute("print(\"Hello\" + \" World\")"));
+    }
+
+    [Test]
+    public void TestNull()
+    {
+        Assert.AreEqual("null", Script.Execute("print(null)"));
     }
 
     [Test]
@@ -130,7 +136,7 @@ public class TestBaseLanguage
     [Test]
     public void TestIfTrue()
     {
-        Assert.AreEqual("42", Script.Execute("if true \n{ print(42); }"));
+        Assert.AreEqual("42", Script.Execute("if true { print(42); }"));
     }
 
     [Test]

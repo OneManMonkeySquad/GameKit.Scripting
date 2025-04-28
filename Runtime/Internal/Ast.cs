@@ -202,7 +202,7 @@ namespace GameKit.Scripting.Internal
 
         public override string ToString(string padding)
         {
-            var str = padding + $"DeclareFunc '{Name}' Parameters: " + Parameters;
+            var str = padding + $"[DeclareFunc '{Name}' Parameters: {Parameters}]";
             foreach (var stmt in Statements)
             {
                 str += "\n" + padding + stmt.ToString(padding + "\t");

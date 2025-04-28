@@ -228,9 +228,6 @@ namespace GameKit.Scripting.Internal
                 }
 
                 var mb = typeBuilder.DefineMethod(func.Name, MethodAttributes.Public | MethodAttributes.Static, resultType, parameters);
-
-
-
                 methods[func.Name] = mb;
             }
 
@@ -444,7 +441,7 @@ namespace GameKit.Scripting.Internal
                             break;
 
                         default:
-                            throw new Exception("case missing (value) ");
+                            throw new Exception("case missing (value)");
                     }
                     break;
 

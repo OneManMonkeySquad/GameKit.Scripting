@@ -330,7 +330,7 @@ namespace GameKit.Scripting.Internal
             if (_lexer.Peek(TokenKind.Null))
             {
                 var tk = _lexer.Accept(TokenKind.Null);
-                return new ValueExpr { Value = Value.FromEntity(Entity.Null), SourceLocation = tk.SourceLocation };
+                return new ValueExpr { Value = Value.Null, SourceLocation = tk.SourceLocation };
             }
             else if (_lexer.Peek(TokenKind.String))
             {
