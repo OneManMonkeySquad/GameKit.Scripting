@@ -85,18 +85,20 @@ namespace GameKit.Scripting.Internal
         {
             if (stmt is Assignment asn)
             {
-                if (currentScope.TryFind(asn.VariableName, out ScopeVariableInfo info))
-                {
-                    if (info.Source == VariableSource.Argument)
-                        throw new System.Exception($"Assigning to argument is not allowed '{asn.VariableName}' (at {asn.SourceLocation})");
+                if (!currentScope.TryFind(asn.VariableName, out ScopeVariableInfo info))
+                    throw new System.Exception($"Unknown identifier '{asn.VariableName}', did you mean := to declare a new variable? (at {asn.SourceLocation})");
 
-                    asn.ScopeInfo = info;
-                }
-                else
-                {
-                    currentScope.LocalVariables[asn.VariableName] = new ScopeVariableInfo { Source = VariableSource.Local };
-                    asn.ScopeInfo = new ScopeVariableInfo { Source = VariableSource.Local };
-                }
+                if (info.Source == VariableSource.Argument)
+                    throw new System.Exception($"Assigning to argument is not allowed '{asn.VariableName}' (at {asn.SourceLocation})");
+
+                asn.ScopeInfo = info;
+            }
+
+            if (stmt is VariableDecl variableDecl)
+            {
+                var info = new ScopeVariableInfo { Source = VariableSource.Local };
+                currentScope.LocalVariables.Add(variableDecl.VariableName, info);
+                variableDecl.ScopeInfo = info;
             }
 
             if (stmt is FunctionDecl func)

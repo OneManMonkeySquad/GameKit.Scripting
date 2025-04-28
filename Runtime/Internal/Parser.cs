@@ -91,8 +91,16 @@ namespace GameKit.Scripting.Internal
                 _lexer.Accept(TokenKind.Equal);
                 var value = ParseExpression();
                 _lexer.Accept(TokenKind.Semicolon);
-
                 return new Assignment { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
+            }
+
+            // Variable declaration?
+            if (_lexer.Peek(TokenKind.DeclareVariable))
+            {
+                _lexer.Accept(TokenKind.DeclareVariable);
+                var value = ParseExpression();
+                _lexer.Accept(TokenKind.Semicolon);
+                return new VariableDecl { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
             }
 
             // Call

@@ -25,6 +25,7 @@ namespace GameKit.Scripting.Internal
         Semicolon,
         Comma,
         Equal, // =
+        DeclareVariable, // :=
         Plus,
         Minus,
         CmpEq, // ==
@@ -71,6 +72,7 @@ namespace GameKit.Scripting.Internal
             TokenKind.Semicolon => ";",
             TokenKind.Comma => ",",
             TokenKind.Equal => "=",
+            TokenKind.DeclareVariable => ":=",
             TokenKind.Plus => "+",
             TokenKind.Minus => "-",
             TokenKind.CmpGt => ">",
@@ -142,6 +144,15 @@ namespace GameKit.Scripting.Internal
                         inComment = true;
                     }
                     // Double delimiter?
+                    else if (c == ':' && c2 == '=')
+                    {
+                        AddNonTerminal(result, code[lastI..i], sourceLoc);
+
+                        result.Add(new Token { Kind = TokenKind.DeclareVariable, SourceLocation = sourceLoc });
+
+                        ++i;
+                        lastI = i + 1;
+                    }
                     else if (c == '&' && c2 == '&')
                     {
                         AddNonTerminal(result, code[lastI..i], sourceLoc);

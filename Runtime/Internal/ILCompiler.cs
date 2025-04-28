@@ -315,7 +315,6 @@ namespace GameKit.Scripting.Internal
 
                 case Assignment assignment:
                     VisitExpression(assignment.Value, il, globals, localVars);
-
                     switch (assignment.ScopeInfo.Source)
                     {
                         case VariableSource.Local:
@@ -331,6 +330,23 @@ namespace GameKit.Scripting.Internal
                             break;
                         default:
                             throw new Exception("missing case (assignment)");
+                    }
+                    break;
+
+                case VariableDecl variableDecl:
+                    VisitExpression(variableDecl.Value, il, globals, localVars);
+                    switch (variableDecl.ScopeInfo.Source)
+                    {
+                        case VariableSource.Local:
+                            if (!localVars.TryGetValue(variableDecl.VariableName, out var local))
+                            {
+                                local = il.DeclareLocal(typeof(Value));
+                                localVars.Add(variableDecl.VariableName, local);
+                            }
+                            il.Stloc(local);
+                            break;
+                        default:
+                            throw new Exception("missing case (variable decl)");
                     }
                     break;
 

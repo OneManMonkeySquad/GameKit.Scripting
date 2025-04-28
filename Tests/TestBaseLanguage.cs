@@ -19,7 +19,7 @@ public class TestBaseLanguage
     public void TestPrintVariable()
     {
         Assert.AreEqual("Hello World", Script.Execute(
-            "x = \"Hello World\";\n"
+            "x := \"Hello World\";\n"
             + "print(x);"));
     }
 
@@ -38,7 +38,7 @@ public class TestBaseLanguage
               "func derp() {\n"
             + "  return \"Hello World\";\n"
             + "}\n"
-            + "x = derp();\n"
+            + "x := derp();\n"
             + "print(x);"));
     }
 
@@ -169,7 +169,7 @@ public class TestBaseLanguage
     public void TestVariableAdd()
     {
         Assert.AreEqual("3", Script.Execute(
-              "x = 1;\n"
+              "x := 1;\n"
             + "x = x + 2;\n"
             + "print(x);"));
     }
@@ -178,7 +178,7 @@ public class TestBaseLanguage
     public void TestNegateVariable()
     {
         Assert.AreEqual("-1", Script.Execute(
-              "x = 1;\n"
+              "x := 1;\n"
             + "print(-x);"));
     }
 
@@ -186,7 +186,7 @@ public class TestBaseLanguage
     public void TestVariableAdd2()
     {
         Assert.AreEqual("4", Script.Execute(
-              "x = 1;\n"
+              "x := 1;\n"
             + "x = x + 2 + x;\n"
             + "print(x);"));
     }
