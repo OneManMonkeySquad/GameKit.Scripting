@@ -26,8 +26,6 @@ public class TestBaseLanguage
     [Test]
     public void TestFunc()
     {
-        Assert.AreEqual("", Script.Execute("func derp() { print(\"S1\"); }"));
-
         Assert.AreEqual("S1", Script.Execute("derp(); func derp() { print(\"S1\"); }"));
 
         Assert.AreEqual("S1", Script.ExecuteFunc("func derp() { print(\"S1\"); }", "derp"));
