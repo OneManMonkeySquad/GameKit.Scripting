@@ -36,10 +36,21 @@ public class TestBaseLanguage
     {
         Assert.AreEqual("Hello World", Script.Execute(
               "func derp() {\n"
-            + "  return \"Hello World\";\n"
+            + "  return \"Hello World\"\n"
             + "}\n"
-            + "x := derp();\n"
-            + "print(x);"));
+            + "x := derp()\n"
+            + "print(x)"));
+    }
+
+    [Test]
+    public void TestFuncReturnEarly()
+    {
+        Assert.AreEqual("", Script.Execute(
+              "func derp() {\n"
+            + "  return\n"
+            + "  print(42)\n"
+            + "}\n"
+            + "derp();"));
     }
 
     [Test]

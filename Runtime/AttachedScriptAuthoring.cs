@@ -51,12 +51,19 @@ namespace GameKit.Scripting.Runtime
                     var builder = new BlobBuilder(Allocator.Temp);
                     ref BakedScript script = ref builder.ConstructRoot<BakedScript>();
 
-                    script.FileNameHint = AssetDatabase.GetAssetPath(authoring.Asset);
+                    script.FileNameHint = authoring.Asset.FileNameHint;
                     builder.AllocateString(ref script.Code, authoring.Asset.Code);
                     script.CodeHash = authoring.Asset.Code.GetHashCode(); // #todo include property values
 
                     result = builder.CreateBlobAssetReference<BakedScript>(Allocator.Persistent);
                     builder.Dispose();
+
+                    //
+                    var cs = Script.Compile(authoring.Asset.Code, authoring.Asset.FileNameHint);
+                    if (cs.HasFunction("on_bake"))
+                    {
+                        cs.Execute("on_bake");
+                    }
                 }
 
                 //

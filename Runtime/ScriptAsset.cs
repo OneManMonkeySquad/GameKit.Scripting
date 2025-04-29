@@ -7,6 +7,8 @@ namespace GameKit.Scripting.Runtime
     public sealed class ScriptAsset : ScriptableObject
     {
         public string Code;
+        public string FileNameHint;
         public List<string> PropertyNames;
+        public bool LastCompilationFailed;
     }
 }

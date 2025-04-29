@@ -19,12 +19,12 @@ namespace GameKit.Scripting.Runtime
         {
             EntityCommandBuffer ecb = SystemAPI.GetSingletonRW<BeginInitializationEntityCommandBufferSystem.Singleton>().ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
 
-            foreach (var (attached, props, entity) in SystemAPI.Query<AttachedScript, DynamicBuffer<PropertyValue>>().WithNone<AttachedCompiledScript>().WithEntityAccess())
+            foreach (var (attachedScript, props, entity) in SystemAPI.Query<AttachedScript, DynamicBuffer<PropertyValue>>().WithNone<AttachedCompiledScript>().WithEntityAccess())
             {
-                if (!attached.Script.IsCreated)
+                if (!attachedScript.Script.IsCreated)
                     continue;
 
-                var compiledScript = Script.Compile(ref attached.Script.Value);
+                var compiledScript = Script.Compile(attachedScript.Script.Value.Code.ToString(), attachedScript.Script.Value.FileNameHint.ToString());
 
                 for (int i = 0; i < props.Length; ++i)
                 {
@@ -34,7 +34,7 @@ namespace GameKit.Scripting.Runtime
                 ecb.AddComponent(entity, new AttachedCompiledScript
                 {
                     Script = compiledScript,
-                    CodeHash = attached.Script.Value.CodeHash,
+                    CodeHash = attachedScript.Script.Value.CodeHash,
                 });
             }
 
@@ -43,7 +43,7 @@ namespace GameKit.Scripting.Runtime
                 if (attachedScript.Script.Value.CodeHash != attachedCompiledScript.CodeHash)
                 {
                     // Compile new script
-                    var compiledScript = Script.Compile(ref attachedScript.Script.Value);
+                    var compiledScript = Script.Compile(attachedScript.Script.Value.Code.ToString(), attachedScript.Script.Value.FileNameHint.ToString());
 
                     // Copy old property values to new instance
                     attachedCompiledScript.Script.CopyPropertiesTo(compiledScript);

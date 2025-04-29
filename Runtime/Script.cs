@@ -19,7 +19,7 @@ namespace GameKit.Scripting.Runtime
     {
         public static string Execute(string str) => ExecuteFunc(str, "main");
 
-        public static string ExecuteFunc(string str, string funcName) => Execute(str, funcName, "<string>");
+        public static string ExecuteFunc(string str, string funcName) => Execute(str, funcName, "");
 
         static string Execute(string str, string funcName, string fileNameHint)
         {
@@ -37,13 +37,14 @@ namespace GameKit.Scripting.Runtime
             return Compile(code, Path.GetFileName(filePath));
         }
 
-        public static CompiledScript Compile(ref BakedScript script) => Compile(script.Code.ToString(), script.FileNameHint.ToString());
-
-
         public static CompiledScript Compile(string str, string fileNameHint)
         {
             var ast = Parse(str, fileNameHint);
+            return Compile(ast);
+        }
 
+        public static CompiledScript Compile(Ast ast)
+        {
             var compiler = new ILCompiler();
             var ca = compiler.Compile(ast);
             return ca;

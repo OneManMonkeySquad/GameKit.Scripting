@@ -36,6 +36,11 @@ namespace GameKit.Scripting.Internal
             }
         }
 
+        public bool HasFunction(string name)
+        {
+            return _functions.ContainsKey(name);
+        }
+
         public void Execute(string name)
         {
             Delegate d = _functions[name].CreateDelegate(typeof(Action), null);
@@ -70,10 +75,7 @@ namespace GameKit.Scripting.Internal
             var asmName = new AssemblyName("MyDynamicAssembly");
             var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.RunAndCollect);
             var modBuilder = asmBuilder.DefineDynamicModule("MyModule");
-            var typeBuilder = modBuilder.DefineType(
-                "MyDynamicType" + numRecompiles,                   // Type name
-                TypeAttributes.Public | TypeAttributes.Class // Modifiers (public class)
-            );
+            var typeBuilder = modBuilder.DefineType("MyDynamicType" + numRecompiles, TypeAttributes.Public | TypeAttributes.Class);
 
             var properties = new Dictionary<string, FieldInfo>();
             foreach (var prop in ast.Properties)

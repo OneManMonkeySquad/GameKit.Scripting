@@ -8,7 +8,7 @@ Why not Lua/JavaScript/...? Compiling directly to the CLR is really elegant - it
 hassle. This tool is specifically crafted for DOTS and baking - thus allowing convinient DOTS-specific workflows.
 
 ## Features
-- **Runtime script reload and Instant compile times**
+- **Runtime script reload and instant compile times**
 - Console errors point to proper source location
 - Easy binding of static C# functions
 - Script properties with editor support (f.i. for references to other Entities)
@@ -29,6 +29,8 @@ Add *AttachedScriptAuthoring* component to an authoring GameObject inside a subs
 - Allow multiple scripts on single Entity
 - Assign scripts to objects at runtime... somehow (tags, ids, names, ...)
 - Have a special syntax to send messages to other objects
+- Build/bake time code execution
 
 ## Credits
 https://craftinginterpreters.com
+https://media.gdcvault.com/gdc2017/Presentations/Reed_Dan_NetworkingScriptedWeapons.pdf

@@ -23,14 +23,27 @@ namespace GameKit.Scripting
                 ctx.SetMainObject(asset);
             }
 
+            asset.LastCompilationFailed = true;
+
             try
             {
                 var ast = Script.Parse(code, ctx.assetPath);
                 asset.Code = code;
+                asset.FileNameHint = ctx.assetPath;
                 asset.PropertyNames = ast.Properties.Select(p => p.Name).ToList();
+
+                asset.LastCompilationFailed = false;
+
+                var cs = Script.Compile(ast);
+                if (cs.HasFunction("on_build"))
+                {
+                    cs.Execute("on_build");
+                }
             }
-            catch (Exception)
-            { }
+            catch (Exception e)
+            {
+                Debug.LogError(e);
+            }
         }
     }
 }
