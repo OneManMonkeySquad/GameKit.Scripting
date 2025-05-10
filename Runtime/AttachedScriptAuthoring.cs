@@ -77,15 +77,18 @@ namespace GameKit.Scripting.Runtime
                 eventBuff.Add(new QueuedScriptEvent { Name = "on_init" });
 
                 var propertyBuff = AddBuffer<PropertyValue>(entity);
-                for (int i = 0; i < authoring.PropertyValues.Length; ++i)
+                if (authoring.PropertyValues != null)
                 {
-                    var value = new PropertyValue { };
-                    value.Name = authoring.PropertyNames[i];
-                    if (authoring.PropertyValues[i] != null)
+                    for (int i = 0; i < authoring.PropertyValues.Length; ++i)
                     {
-                        value.Value = Value.FromEntity(GetEntity(authoring.PropertyValues[i], TransformUsageFlags.None));
+                        var value = new PropertyValue { };
+                        value.Name = authoring.PropertyNames[i];
+                        if (authoring.PropertyValues[i] != null)
+                        {
+                            value.Value = Value.FromEntity(GetEntity(authoring.PropertyValues[i], TransformUsageFlags.None));
+                        }
+                        propertyBuff.Add(value);
                     }
-                    propertyBuff.Add(value);
                 }
             }
         }

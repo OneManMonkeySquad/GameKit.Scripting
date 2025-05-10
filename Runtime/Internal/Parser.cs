@@ -105,7 +105,7 @@ namespace GameKit.Scripting.Internal
 
             // Call
             if (!_lexer.Peek(TokenKind.ParenOpen))
-                _lexer.ThrowError("Expected on of =, (");
+                _lexer.ThrowError($"Expected on of := = ( after {name}");
 
             var arguments = ParseArguments();
 
