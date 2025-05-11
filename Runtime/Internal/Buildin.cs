@@ -96,6 +96,7 @@ namespace GameKit.Scripting.Internal
                 (ValueTypeIdx.Null, ValueTypeIdx.Null) => Value.FromBool(true),
                 (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromBool(left.AsInt == right.AsInt),
                 (ValueTypeIdx.Entity, ValueTypeIdx.Null) => Value.FromBool(left.AsEntity == Entity.Null),
+                (ValueTypeIdx.Entity, ValueTypeIdx.Entity) => Value.FromBool(left.AsEntity == right.AsEntity),
                 _ => throw new Exception("Unexpected types for CmpEq " + (left.Type, right.Type)),
             };
         }
@@ -107,6 +108,7 @@ namespace GameKit.Scripting.Internal
                 (ValueTypeIdx.Null, ValueTypeIdx.Null) => Value.FromBool(false),
                 (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromBool(left.AsInt != right.AsInt),
                 (ValueTypeIdx.Entity, ValueTypeIdx.Null) => Value.FromBool(left.AsEntity != Entity.Null),
+                (ValueTypeIdx.Entity, ValueTypeIdx.Entity) => Value.FromBool(left.AsEntity != right.AsEntity),
                 _ => throw new Exception("Unexpected types for CmpEq " + (left.Type, right.Type)),
             };
         }
