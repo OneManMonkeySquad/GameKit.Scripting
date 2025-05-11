@@ -1,11 +1,10 @@
 using UnityEngine;
 using Unity.Entities;
 using Unity.Collections;
-using UnityEditor;
 
 namespace GameKit.Scripting.Runtime
 {
-    public struct BakedScript : IComponentData
+    public struct BlobScript
     {
         public FixedString64Bytes FileNameHint;
         public BlobString Code;
@@ -14,7 +13,7 @@ namespace GameKit.Scripting.Runtime
 
     public struct AttachedScript : IComponentData
     {
-        public BlobAssetReference<BakedScript> Script;
+        public BlobAssetReference<BlobScript> Script;
     }
 
     [InternalBufferCapacity(0)]
@@ -25,7 +24,7 @@ namespace GameKit.Scripting.Runtime
     }
 
     [InternalBufferCapacity(0)]
-    public struct QueuedScriptEvent : IBufferElementData
+    public struct ScriptEvent : IBufferElementData
     {
         public FixedString32Bytes Name;
     }
@@ -43,27 +42,24 @@ namespace GameKit.Scripting.Runtime
             public override void Bake(AttachedScriptAuthoring authoring)
             {
                 // Bake script
-                BlobAssetReference<BakedScript> result = new();
+                BlobAssetReference<BlobScript> result = new();
                 if (authoring.Asset != null)
                 {
                     DependsOn(authoring.Asset);
 
                     var builder = new BlobBuilder(Allocator.Temp);
-                    ref BakedScript script = ref builder.ConstructRoot<BakedScript>();
+                    ref BlobScript script = ref builder.ConstructRoot<BlobScript>();
 
                     script.FileNameHint = authoring.Asset.FileNameHint;
                     builder.AllocateString(ref script.Code, authoring.Asset.Code);
                     script.CodeHash = authoring.Asset.Code.GetHashCode(); // #todo include property values
 
-                    result = builder.CreateBlobAssetReference<BakedScript>(Allocator.Persistent);
+                    result = builder.CreateBlobAssetReference<BlobScript>(Allocator.Persistent);
                     builder.Dispose();
 
                     //
                     var cs = Script.Compile(authoring.Asset.Code, authoring.Asset.FileNameHint);
-                    if (cs.HasFunction("on_bake"))
-                    {
-                        cs.Execute("on_bake");
-                    }
+                    cs.TryExecute("on_bake");
                 }
 
                 //
@@ -73,8 +69,8 @@ namespace GameKit.Scripting.Runtime
                     Script = result
                 });
 
-                var eventBuff = AddBuffer<QueuedScriptEvent>(entity);
-                eventBuff.Add(new QueuedScriptEvent { Name = "on_init" });
+                var eventBuff = AddBuffer<ScriptEvent>(entity);
+                eventBuff.Add(new ScriptEvent { Name = "on_init" });
 
                 var propertyBuff = AddBuffer<PropertyValue>(entity);
                 if (authoring.PropertyValues != null)

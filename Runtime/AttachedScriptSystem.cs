@@ -54,7 +54,7 @@ namespace GameKit.Scripting.Runtime
                 }
             }
 
-            foreach (var (script, events, entity) in SystemAPI.Query<AttachedCompiledScript, DynamicBuffer<QueuedScriptEvent>>().WithEntityAccess())
+            foreach (var (script, events, entity) in SystemAPI.Query<AttachedCompiledScript, DynamicBuffer<ScriptEvent>>().WithEntityAccess())
             {
                 int numEvents = events.Length;
                 if (numEvents > 0)

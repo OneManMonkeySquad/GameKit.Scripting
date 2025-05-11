@@ -35,10 +35,7 @@ namespace GameKit.Scripting
                 asset.LastCompilationFailed = false;
 
                 var cs = Script.Compile(ast);
-                if (cs.HasFunction("on_build"))
-                {
-                    cs.Execute("on_build");
-                }
+                cs.TryExecute("on_build");
             }
             catch (Exception e)
             {

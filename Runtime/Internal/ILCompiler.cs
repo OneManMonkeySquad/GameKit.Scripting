@@ -14,10 +14,10 @@ namespace GameKit.Scripting.Internal
 {
     public class CompiledScript
     {
-        Dictionary<string, MethodInfo> _functions;
+        Dictionary<string, Delegate> _functions;
         Dictionary<string, FieldInfo> _properties;
 
-        public CompiledScript(Dictionary<string, MethodInfo> functions, Dictionary<string, FieldInfo> properties)
+        public CompiledScript(Dictionary<string, Delegate> functions, Dictionary<string, FieldInfo> properties)
         {
             _functions = functions;
             _properties = properties;
@@ -43,14 +43,28 @@ namespace GameKit.Scripting.Internal
 
         public void Execute(string name)
         {
-            Delegate d = _functions[name].CreateDelegate(typeof(Action), null);
-            d.DynamicInvoke();
+            _functions[name].DynamicInvoke();
         }
 
         public void Execute(string name, Value arg0)
         {
-            Delegate d = _functions[name].CreateDelegate(typeof(Action<Value>), null);
-            d.DynamicInvoke(arg0);
+            _functions[name].DynamicInvoke(arg0);
+        }
+
+        public void TryExecute(string name)
+        {
+            if (_functions.TryGetValue(name, out var method))
+            {
+                method.DynamicInvoke();
+            }
+        }
+
+        public void TryExecute(string name, Value arg0)
+        {
+            if (_functions.TryGetValue(name, out var method))
+            {
+                method.DynamicInvoke(arg0);
+            }
         }
     }
 
@@ -122,11 +136,27 @@ namespace GameKit.Scripting.Internal
 
             var myType = typeBuilder.CreateType();
 
-            var methods2 = new Dictionary<string, MethodInfo>();
-            var properties2 = new Dictionary<string, FieldInfo>();
+            var methods2 = new Dictionary<string, Delegate>(ast.Functions.Count);
+            var properties2 = new Dictionary<string, FieldInfo>(ast.Properties.Count);
             foreach (var func in ast.Functions)
             {
-                methods2.Add(func.Name, myType.GetMethod(func.Name));
+                var method = myType.GetMethod(func.Name);
+                Delegate d;
+
+                if (method.GetParameters().Length == 0)
+                {
+                    d = method.CreateDelegate(typeof(Action), null);
+                }
+                else if (method.GetParameters().Length == 1)
+                {
+                    d = method.CreateDelegate(typeof(Action<Value>), null);
+                }
+                else
+                {
+                    throw new Exception("todo");
+                }
+
+                methods2.Add(func.Name, d);
             }
             foreach (var prop in ast.Properties)
             {

@@ -27,8 +27,8 @@ namespace GameKit.Scripting.Runtime
         [Scriptable("queue_event")]
         public static void QueueEvent(Value ent, Value name)
         {
-            var buff = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<QueuedScriptEvent>((Entity)ent);
-            buff.Add(new QueuedScriptEvent { Name = Buildin.GetString(name) });
+            var buff = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<ScriptEvent>((Entity)ent);
+            buff.Add(new ScriptEvent { Name = Buildin.GetString(name) });
         }
     }
 }
