@@ -13,7 +13,7 @@ namespace GameKit.Scripting.Internal
         /// </summary>
         public Ast ParseToAst(string str, string fileNameHint)
         {
-            File.WriteAllText("E:\\stmt.txt", "");
+            File.WriteAllText("E:\\ast.txt", "");
 
             _lexer = new Lexer(str, fileNameHint);
 
@@ -40,7 +40,7 @@ namespace GameKit.Scripting.Internal
 
             if (statements.Count > 0)
             {
-                functions.Add(new FunctionDecl { Name = "main", Statements = statements, Parameters = new() });
+                functions.Add(new FunctionDecl { Name = "main", Statements = statements, ParameterNames = new() });
             }
 
             //
@@ -55,14 +55,21 @@ namespace GameKit.Scripting.Internal
             sa.Analyse(ast);
 
             //
+
+            foreach (var p in properties)
+            {
+                File.AppendAllText("E:\\ast.txt", $"property {p.Name} <{p.ResultType}>\n");
+            }
+            File.AppendAllText("E:\\ast.txt", "\n");
+
             foreach (var f in functions)
             {
-                File.AppendAllText("E:\\stmt.txt", $"=== {f} ===\n");
+                File.AppendAllText("E:\\ast.txt", $"{f.ToString("")}\n");
                 foreach (var st in f.Statements)
                 {
-                    File.AppendAllText("E:\\stmt.txt", $"{st.ToString("\t")}\n\n");
+                    File.AppendAllText("E:\\ast.txt", $"{st.ToString("\t")}\n\n");
                 }
-                File.AppendAllText("E:\\stmt.txt", "\n");
+                File.AppendAllText("E:\\ast.txt", "\n");
             }
 
             return ast;
@@ -120,7 +127,7 @@ namespace GameKit.Scripting.Internal
             _lexer.Accept(TokenKind.Colon);
             var type = _lexer.Accept(TokenKind.NonTerminal);
             _lexer.Accept(TokenKind.Semicolon);
-            return new PropertyDecl { Name = name.Content, TypeName = type.Content, SourceLocation = tk.SourceLocation };
+            return new PropertyDecl { Name = name.Content, DeclaredTypeName = type.Content, SourceLocation = tk.SourceLocation };
         }
 
         Statement ParseReturn()
@@ -189,7 +196,7 @@ namespace GameKit.Scripting.Internal
             {
                 Name = name.Content,
                 Statements = statements,
-                Parameters = parameters,
+                ParameterNames = parameters,
                 SourceLocation = name.SourceLocation
             };
         }

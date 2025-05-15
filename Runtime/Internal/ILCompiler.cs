@@ -40,7 +40,7 @@ namespace GameKit.Scripting.Internal
             var properties = new Dictionary<string, FieldInfo>();
             foreach (var prop in ast.Properties)
             {
-                var type = ScriptingTypeCache.ByName(prop.TypeName);
+                var type = ScriptingTypeCache.ByName(prop.DeclaredTypeName);
 
                 var staticField = typeBuilder.DefineField(
                       prop.Name,
@@ -55,8 +55,8 @@ namespace GameKit.Scripting.Internal
 
             foreach (var func in ast.Functions)
             {
-                var parameters = new Type[func.Parameters.Count];
-                for (int i = 0; i < func.Parameters.Count; ++i)
+                var parameters = new Type[func.ParameterNames.Count];
+                for (int i = 0; i < func.ParameterNames.Count; ++i)
                 {
                     parameters[i] = typeof(object);
                 }
@@ -166,11 +166,7 @@ namespace GameKit.Scripting.Internal
                     break;
 
                 case Call call:
-                    foreach (var arg in call.Arguments)
-                    {
-                        VisitExpression(arg, il, globals, localVars);
-                    }
-                    il.Call(globals.Methods[call.Name]);
+                    VisitCall(call, il, globals, localVars);
                     break;
 
                 case Assignment assignment:
@@ -381,14 +377,7 @@ namespace GameKit.Scripting.Internal
                     break;
 
                 case Call call:
-                    foreach (var arg in call.Arguments)
-                    {
-                        VisitExpression(arg, il, globals, localVars);
-                    }
-                    if (!globals.Methods.ContainsKey(call.Name))
-                        throw new Exception($"({call.SourceLocation}): Function not found '{call.Name}'");
-
-                    il.Call(globals.Methods[call.Name]);
+                    VisitCall(call, il, globals, localVars);
                     break;
 
                 case GroupingExpr group:
@@ -398,6 +387,28 @@ namespace GameKit.Scripting.Internal
                 default:
                     throw new Exception("Missing case");
             }
+        }
+
+        void VisitCall(Call call, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
+        {
+            if (!globals.Methods.TryGetValue(call.Name, out MethodInfo method))
+                throw new Exception($"Function '{call.Name}' not found (at {call.SourceLocation})");
+
+            var parameters = method.GetParameters();
+
+            for (int i = 0; i < call.Arguments.Count; i++)
+            {
+                var arg = call.Arguments[i];
+                VisitExpression(arg, il, globals, localVars);
+
+                var param = parameters[i];
+                if (param.GetType() != typeof(object))
+                {
+                    // #todo
+                }
+            }
+
+            il.Call(method);
         }
     }
 }

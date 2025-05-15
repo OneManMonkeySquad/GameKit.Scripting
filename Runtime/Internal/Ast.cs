@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using GameKit.Scripting.Runtime;
 
@@ -5,15 +6,23 @@ namespace GameKit.Scripting.Internal
 {
     public interface IVisitStatements
     {
-        void Statement(Statement stmt);
-        void Expression(Expression expr);
         void EnterScope() { }
         void ExitScope() { }
-    }
 
-    public interface IVisitAst : IVisitStatements
-    {
-        void Property(PropertyDecl prop);
+        void Call(Call call) { }
+        void If(If @if) { }
+        void LocalVariableDecl(LocalVariableDecl localVariableDecl) { }
+        void Assignment(Assignment assignment) { }
+        void Return(Return ret) { }
+        void PropertyDecl(PropertyDecl propertyDecl) { }
+        void FunctionDecl(FunctionDecl functionDecl) { }
+        void ValueExpr(ValueExpr valueExpr) { }
+        void VariableExpr(VariableExpr variableExpr) { }
+        void GroupingExpr(GroupingExpr groupingExpr) { }
+        void NegateExpr(NegateExpr negateExpr) { }
+        void CmpExpr(CmpExpr cmpExpr) { }
+        void MulExpr(MulExpr mulExpr) { }
+        void AddExpr(AddExpr addExpr) { }
     }
 
     public struct SourceLocation
@@ -33,21 +42,15 @@ namespace GameKit.Scripting.Internal
     public abstract class Expression
     {
         public SourceLocation SourceLocation;
+        public Type ResultType;
 
-        public virtual void Visit(IVisitStatements visitor)
-        {
-            visitor.Expression(this);
-        }
+        public abstract void Visit(IVisitStatements visitor);
 
         public abstract string ToString(string padding);
     }
 
     public abstract class Statement : Expression
     {
-        public override void Visit(IVisitStatements visitor)
-        {
-            visitor.Statement(this);
-        }
     }
 
     public class Call : Statement
@@ -57,7 +60,7 @@ namespace GameKit.Scripting.Internal
 
         public override void Visit(IVisitStatements visitor)
         {
-            visitor.Statement(this);
+            visitor.Call(this);
             foreach (var arg in Arguments)
             {
                 arg.Visit(visitor);
@@ -66,7 +69,7 @@ namespace GameKit.Scripting.Internal
 
         public override string ToString(string padding)
         {
-            var str = padding + $"[Call '{Name}']";
+            var str = padding + $"[Call '{Name}'] <{ResultType}>";
             foreach (var arg in Arguments)
             {
                 str += "\n" + arg.ToString(padding + "\t");
@@ -83,7 +86,7 @@ namespace GameKit.Scripting.Internal
 
         public override void Visit(IVisitStatements visitor)
         {
-            visitor.Statement(this);
+            visitor.If(this);
             Condition.Visit(visitor);
             foreach (var stmt in TrueStatements)
             {
@@ -100,7 +103,7 @@ namespace GameKit.Scripting.Internal
 
         public override string ToString(string padding)
         {
-            var str = padding + $"[If]";
+            var str = padding + $"[If] <{ResultType}>";
             str += "\n" + padding + "\tCondition:";
             str += "\n" + Condition.ToString(padding + "\t\t");
             str += "\n" + padding + "\tTrue:";
@@ -128,12 +131,12 @@ namespace GameKit.Scripting.Internal
         public override void Visit(IVisitStatements visitor)
         {
             Value.Visit(visitor);
-            visitor.Statement(this);
+            visitor.LocalVariableDecl(this);
         }
 
         public override string ToString(string padding)
         {
-            var str = padding + $"[LocalVariableDecl '{VariableName}']\n";
+            var str = padding + $"[LocalVariableDecl '{VariableName}'] <{ResultType}>\n";
             str += Value.ToString(padding + "\t");
             return str;
         }
@@ -148,12 +151,12 @@ namespace GameKit.Scripting.Internal
         public override void Visit(IVisitStatements visitor)
         {
             Value.Visit(visitor);
-            visitor.Statement(this);
+            visitor.Assignment(this);
         }
 
         public override string ToString(string padding)
         {
-            var str = padding + $"[Assignment {ScopeInfo} '{VariableName}']\n";
+            var str = padding + $"[Assignment '{VariableName}' {ScopeInfo}] <{ResultType}>\n";
             str += Value.ToString(padding + "\t");
             return str;
         }
@@ -168,15 +171,15 @@ namespace GameKit.Scripting.Internal
 
         public override void Visit(IVisitStatements visitor)
         {
-            visitor.Statement(this);
             Value?.Visit(visitor);
+            visitor.Return(this);
         }
 
         public override string ToString(string padding)
         {
             if (Value != null)
             {
-                var str = padding + $"[Return]\n";
+                var str = padding + $"[Return] <{ResultType}>\n";
                 str += Value.ToString(padding + "\t");
                 return str;
             }
@@ -190,22 +193,27 @@ namespace GameKit.Scripting.Internal
     public class PropertyDecl : Statement
     {
         public string Name;
-        public string TypeName;
+        public string DeclaredTypeName;
 
-        public override string ToString(string padding) => $"[Property {TypeName} '{Name}']";
+        public override void Visit(IVisitStatements visitor)
+        {
+            visitor.PropertyDecl(this);
+        }
+
+        public override string ToString(string padding) => $"[Property '{Name}'] <{ResultType}>";
     }
 
     public class FunctionDecl : Statement
     {
         public string Name;
         public List<Statement> Statements;
-        public List<string> Parameters;
+        public List<string> ParameterNames;
         public bool HasReturnValue;
 
         public override void Visit(IVisitStatements visitor)
         {
             visitor.EnterScope();
-            visitor.Statement(this);
+            visitor.FunctionDecl(this);
             visitor.EnterScope(); // Double scope here because local variables can shadow parameters, so they need their own scope
             foreach (var stmt in Statements)
             {
@@ -217,12 +225,12 @@ namespace GameKit.Scripting.Internal
 
         public override string ToString()
         {
-            return $"{Name}({string.Join(',', Parameters)}) {(HasReturnValue ? "@HasReturnValue" : "")}";
+            return $"{Name}({string.Join(',', ParameterNames)}) {(HasReturnValue ? "@HasReturnValue" : "")}";
         }
 
         public override string ToString(string padding)
         {
-            var str = padding + $"[DeclareFunc '{Name}' Parameters: {Parameters}]";
+            var str = padding + $"[DeclareFunc '{Name}' ({string.Join(',', ParameterNames)})] <{ResultType}>";
             foreach (var stmt in Statements)
             {
                 str += "\n" + padding + stmt.ToString(padding + "\t");
@@ -231,23 +239,19 @@ namespace GameKit.Scripting.Internal
         }
     }
 
-    public enum ValueType
-    {
-        Null,
-        Bool,
-        Int,
-        Float,
-        Double,
-        Entity,
-        String,
-    }
+    public enum ValueType { Null, Bool, Int, Float, Double, String }
 
     public class ValueExpr : Expression
     {
         public ValueType ValueType;
         public object Value;
 
-        public override string ToString(string padding) => padding + $"[Value {ValueType} '{Value}']";
+        public override void Visit(IVisitStatements visitor)
+        {
+            visitor.ValueExpr(this);
+        }
+
+        public override string ToString(string padding) => padding + $"[Value '{Value}'] <{ResultType}>";
     }
 
     public class GroupingExpr : Expression
@@ -256,13 +260,13 @@ namespace GameKit.Scripting.Internal
 
         public override void Visit(IVisitStatements visitor)
         {
-            visitor.Expression(this);
             Value.Visit(visitor);
+            visitor.GroupingExpr(this);
         }
 
         public override string ToString(string padding)
         {
-            var str = padding + $"[Grouping]\n";
+            var str = padding + $"[Grouping] <{ResultType}>\n";
             str += Value.ToString(padding + "\t");
             return str;
         }
@@ -274,41 +278,48 @@ namespace GameKit.Scripting.Internal
 
         public override void Visit(IVisitStatements visitor)
         {
-            visitor.Expression(this);
+            visitor.NegateExpr(this);
             Value.Visit(visitor);
         }
 
         public override string ToString(string padding)
         {
-            return padding + $"[Negate]\n" + Value.ToString(padding + "\t");
+            return padding + $"[Negate] <{ResultType}>\n" + Value.ToString(padding + "\t");
         }
     }
 
     public abstract class BinaryExpr : Expression
     {
         public Expression Left, Right;
-
-        public override void Visit(IVisitStatements visitor)
-        {
-            visitor.Expression(this);
-            Left.Visit(visitor);
-            Right.Visit(visitor);
-        }
     }
 
     public class AddExpr : BinaryExpr
     {
+        public override void Visit(IVisitStatements visitor)
+        {
+            visitor.AddExpr(this);
+            Left.Visit(visitor);
+            Right.Visit(visitor);
+        }
+
         public override string ToString(string padding)
         {
-            return padding + $"[Add]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
+            return padding + $"[Add] <{ResultType}>\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
         }
     }
 
     public class MulExpr : BinaryExpr
     {
+        public override void Visit(IVisitStatements visitor)
+        {
+            visitor.MulExpr(this);
+            Left.Visit(visitor);
+            Right.Visit(visitor);
+        }
+
         public override string ToString(string padding)
         {
-            return padding + $"[Mul]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
+            return padding + $"[Mul] <{ResultType}>\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
         }
     }
 
@@ -330,9 +341,16 @@ namespace GameKit.Scripting.Internal
             Type = type;
         }
 
+        public override void Visit(IVisitStatements visitor)
+        {
+            visitor.CmpExpr(this);
+            Left.Visit(visitor);
+            Right.Visit(visitor);
+        }
+
         public override string ToString(string padding)
         {
-            return padding + $"[{Type}]\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
+            return padding + $"[{Type}] <{ResultType}>\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
         }
     }
 
@@ -344,7 +362,12 @@ namespace GameKit.Scripting.Internal
         public string Name;
         public ScopeVariableInfo ScopeInfo;
 
-        public override string ToString(string padding) => padding + $"[Variable {ScopeInfo} '{Name}']";
+        public override void Visit(IVisitStatements visitor)
+        {
+            visitor.VariableExpr(this);
+        }
+
+        public override string ToString(string padding) => padding + $"[VariableExpr '{Name}' {ScopeInfo}] <{ResultType}>";
     }
 
 
@@ -354,12 +377,12 @@ namespace GameKit.Scripting.Internal
         public List<FunctionDecl> Functions;
         public List<PropertyDecl> Properties;
 
-        public void Visit(IVisitAst visitor)
+        public void Visit(IVisitStatements visitor)
         {
             visitor.EnterScope();
             foreach (var prop in Properties)
             {
-                visitor.Property(prop);
+                visitor.PropertyDecl(prop);
             }
             foreach (var func in Functions)
             {

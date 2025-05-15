@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using NUnit.Framework;
 
 namespace GameKit.Scripting.Internal
 {
@@ -6,6 +8,7 @@ namespace GameKit.Scripting.Internal
     {
         public VariableSource Source;
         public int ArgumentIdx;
+        public Statement Declaration;
 
         public override string ToString() => Source switch
         {
@@ -13,7 +16,7 @@ namespace GameKit.Scripting.Internal
             VariableSource.Local => "Local",
             VariableSource.Argument => $"Argument:{ArgumentIdx}",
             VariableSource.Property => "Property",
-            _ => throw new System.Exception("case missing"),
+            _ => throw new Exception("case missing"),
         };
     }
 
@@ -40,20 +43,17 @@ namespace GameKit.Scripting.Internal
     {
         public bool HasReturnValue = false;
 
-        public void Expression(Expression expr)
+        public void Return(Return ret)
         {
-        }
-
-        public void Statement(Statement stmt)
-        {
-            if (stmt is Return ret && ret.Value != null)
+            if (ret.Value != null)
             {
                 HasReturnValue = true;
             }
         }
     }
 
-    class ResolveVariablesVisitor : IVisitAst
+
+    class ResolveVariablesVisitor : IVisitStatements
     {
         Scope currentScope = null;
 
@@ -67,52 +67,178 @@ namespace GameKit.Scripting.Internal
             currentScope = currentScope.ParentScope;
         }
 
-        public void Expression(Expression expr)
+        public void VariableExpr(VariableExpr var)
         {
-            if (expr is VariableExpr var)
-            {
-                if (!currentScope.TryFind(var.Name, out var.ScopeInfo))
-                    throw new System.Exception($"Unknown identifier '{var.Name}' (at {var.SourceLocation})");
-            }
+            if (!currentScope.TryFind(var.Name, out var.ScopeInfo))
+                throw new Exception($"Unknown identifier '{var.Name}' (at {var.SourceLocation})");
         }
 
-        public void Property(PropertyDecl prop)
+        public void PropertyDecl(PropertyDecl prop)
         {
-            currentScope.LocalVariables[prop.Name] = new ScopeVariableInfo { Source = VariableSource.Property };
+            currentScope.LocalVariables[prop.Name] = new ScopeVariableInfo
+            {
+                Source = VariableSource.Property,
+                Declaration = prop,
+            };
         }
 
-        public void Statement(Statement stmt)
+        public void Assignment(Assignment asn)
         {
-            if (stmt is Assignment asn)
-            {
-                if (!currentScope.TryFind(asn.VariableName, out ScopeVariableInfo info))
-                    throw new System.Exception($"Unknown identifier '{asn.VariableName}', did you mean := to declare a new variable? (at {asn.SourceLocation})");
+            if (!currentScope.TryFind(asn.VariableName, out ScopeVariableInfo info))
+                throw new Exception($"Unknown identifier '{asn.VariableName}', did you mean := to declare a new variable? (at {asn.SourceLocation})");
 
-                if (info.Source == VariableSource.Argument)
-                    throw new System.Exception($"Assigning to argument is not allowed '{asn.VariableName}' (at {asn.SourceLocation})");
+            if (info.Source == VariableSource.Argument)
+                throw new Exception($"Assigning to argument is not allowed '{asn.VariableName}' (at {asn.SourceLocation})");
 
-                asn.ScopeInfo = info;
-            }
-            else if (stmt is LocalVariableDecl variableDecl)
-            {
-                if (currentScope.LocalVariables.ContainsKey(variableDecl.VariableName))
-                    throw new System.Exception($"Variable already declared '{variableDecl.VariableName}' (at {variableDecl.SourceLocation})");
+            asn.ScopeInfo = info;
+        }
 
-                var info = new ScopeVariableInfo { Source = VariableSource.Local };
-                currentScope.LocalVariables.Add(variableDecl.VariableName, info);
-            }
-            else if (stmt is FunctionDecl func)
+        public void LocalVariableDecl(LocalVariableDecl variableDecl)
+        {
+            if (currentScope.LocalVariables.ContainsKey(variableDecl.VariableName))
+                throw new Exception($"Variable already declared '{variableDecl.VariableName}' (at {variableDecl.SourceLocation})");
+
+            var info = new ScopeVariableInfo
             {
-                for (int paramIdx = 0; paramIdx < func.Parameters.Count; paramIdx++)
+                Source = VariableSource.Local,
+                Declaration = variableDecl,
+            };
+            currentScope.LocalVariables.Add(variableDecl.VariableName, info);
+        }
+
+        public void FunctionDecl(FunctionDecl func)
+        {
+            for (int paramIdx = 0; paramIdx < func.ParameterNames.Count; paramIdx++)
+            {
+                string param = func.ParameterNames[paramIdx];
+                currentScope.LocalVariables.Add(param, new ScopeVariableInfo
                 {
-                    string param = func.Parameters[paramIdx];
-                    currentScope.LocalVariables.Add(param, new ScopeVariableInfo
-                    {
-                        Source = VariableSource.Argument,
-                        ArgumentIdx = paramIdx,
-                    });
-                }
+                    Source = VariableSource.Argument,
+                    ArgumentIdx = paramIdx,
+                    Declaration = func,
+                });
             }
+        }
+    }
+
+
+    class ResolveTypes : IVisitStatements
+    {
+        public void Assignment(Assignment assignment)
+        {
+            assignment.ResultType = assignment.Value.ResultType;
+        }
+
+        public void CmpExpr(CmpExpr cmpExpr)
+        {
+            cmpExpr.ResultType = typeof(bool);
+        }
+
+        public void MulExpr(MulExpr mulExpr)
+        {
+            mulExpr.ResultType = typeof(object); // #todo
+        }
+
+        public void AddExpr(AddExpr addExpr)
+        {
+            addExpr.ResultType = typeof(object); // #todo
+        }
+
+        public void Call(Call call)
+        {
+            call.ResultType = typeof(object);
+        }
+
+        public void FunctionDecl(FunctionDecl functionDecl) { }
+
+        public void GroupingExpr(GroupingExpr groupingExpr)
+        {
+            groupingExpr.ResultType = groupingExpr.Value.ResultType;
+        }
+
+        public void If(If @if)
+        {
+            @if.ResultType = typeof(void);
+        }
+
+        public void LocalVariableDecl(LocalVariableDecl localVariableDecl)
+        {
+            localVariableDecl.ResultType = localVariableDecl.Value.ResultType;
+        }
+
+        public void NegateExpr(NegateExpr negateExpr)
+        {
+            negateExpr.ResultType = negateExpr.Value.ResultType;
+        }
+
+        public void PropertyDecl(PropertyDecl propertyDecl)
+        {
+            propertyDecl.ResultType = ScriptingTypeCache.ByName(propertyDecl.DeclaredTypeName);
+        }
+
+        public void Return(Return ret)
+        {
+            if (ret.Value != null)
+            {
+                Assert.IsTrue(ret.Value.ResultType != null);
+                ret.ResultType = ret.Value.ResultType;
+            }
+            else
+            {
+                ret.ResultType = typeof(void);
+            }
+        }
+
+        public void ValueExpr(ValueExpr valueExpr)
+        {
+            switch (valueExpr.ValueType)
+            {
+                case ValueType.Null:
+                    valueExpr.ResultType = typeof(object);
+                    break;
+                case ValueType.Bool:
+                    valueExpr.ResultType = typeof(bool);
+                    break;
+                case ValueType.Int:
+                    valueExpr.ResultType = typeof(int);
+                    break;
+                case ValueType.Float:
+                    valueExpr.ResultType = typeof(float);
+                    break;
+                case ValueType.Double:
+                    valueExpr.ResultType = typeof(double);
+                    break;
+                case ValueType.String:
+                    valueExpr.ResultType = typeof(string);
+                    break;
+            }
+        }
+
+        public void VariableExpr(VariableExpr variableExpr)
+        {
+            switch (variableExpr.ScopeInfo.Source)
+            {
+                case VariableSource.Local:
+                    {
+                        var decl = (LocalVariableDecl)variableExpr.ScopeInfo.Declaration;
+                        variableExpr.ResultType = decl.ResultType;
+                        break;
+                    }
+                case VariableSource.Argument:
+                    {
+                        variableExpr.ResultType = typeof(object); // #todo
+                        break;
+                    }
+                case VariableSource.Property:
+                    {
+                        var decl = (PropertyDecl)variableExpr.ScopeInfo.Declaration;
+                        variableExpr.ResultType = decl.ResultType;
+                        break;
+                    }
+            }
+
+
+
         }
     }
 
@@ -130,6 +256,9 @@ namespace GameKit.Scripting.Internal
 
             var resolveVariables = new ResolveVariablesVisitor();
             ast.Visit(resolveVariables);
+
+            var resolveTypes = new ResolveTypes();
+            ast.Visit(resolveTypes);
         }
     }
 }
