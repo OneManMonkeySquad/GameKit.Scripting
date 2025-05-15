@@ -103,12 +103,12 @@ namespace GameKit.Scripting.Internal
             var str = padding + $"[If]";
             str += "\n" + padding + "\tCondition:";
             str += "\n" + Condition.ToString(padding + "\t\t");
-            str += "\n" + padding + "\tTrue Body:";
+            str += "\n" + padding + "\tTrue:";
             foreach (var stmt in TrueStatements)
             {
                 str += "\n" + stmt.ToString(padding + "\t\t");
             }
-            str += "\n" + padding + "\tFalse Body:";
+            str += "\n" + padding + "\tFalse:";
             if (FalseStatements != null)
             {
                 foreach (var stmt in FalseStatements)
@@ -190,8 +190,9 @@ namespace GameKit.Scripting.Internal
     public class PropertyDecl : Statement
     {
         public string Name;
+        public string Type;
 
-        public override string ToString(string padding) => $"[Property '{Name}']";
+        public override string ToString(string padding) => $"[Property {Type} '{Name}']";
     }
 
     public class FunctionDecl : Statement

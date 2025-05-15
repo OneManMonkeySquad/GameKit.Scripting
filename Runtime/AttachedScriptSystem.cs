@@ -46,7 +46,7 @@ namespace GameKit.Scripting.Runtime
                     var compiledScript = Script.Compile(attachedScript.Script.Value.Code.ToString(), attachedScript.Script.Value.FileNameHint.ToString());
 
                     // Copy old property values to new instance
-                    attachedCompiledScript.Script.CopyPropertiesTo(compiledScript);
+                    attachedCompiledScript.Script.CopyStateTo(compiledScript);
 
                     // Swap the script
                     attachedCompiledScript.Script = compiledScript;
@@ -66,8 +66,6 @@ namespace GameKit.Scripting.Runtime
 
                     events.RemoveRange(0, numEvents); // Instead of clear, execution could have added more events
                 }
-
-                script.Script.Execute("on_update", Value.FromEntity(entity));
             }
         }
     }

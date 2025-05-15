@@ -26,6 +26,7 @@ namespace GameKit.Scripting.Internal
         Comma,
         Equal, // =
         DeclareVariable, // :=
+        Colon, // :
         Plus,
         Minus,
         CmpEq, // ==
@@ -74,6 +75,7 @@ namespace GameKit.Scripting.Internal
             TokenKind.Comma => ",",
             TokenKind.Equal => "=",
             TokenKind.DeclareVariable => ":=",
+            TokenKind.Colon => ":",
             TokenKind.Plus => "+",
             TokenKind.Minus => "-",
             TokenKind.CmpGt => ">",
@@ -196,7 +198,8 @@ namespace GameKit.Scripting.Internal
                         || c == '(' || c == ')'
                         || c == '{' || c == '}'
                         || c == ';' || c == ',' || c == '=' || c == '"'
-                        || c == '+' || c == '-' || c == '*' || c == '>')
+                        || c == '+' || c == '-' || c == '*' || c == '>'
+                        || c == ':')
                     {
                         AddNonTerminal(result, code[lastI..i], sourceLoc);
 
@@ -346,7 +349,7 @@ namespace GameKit.Scripting.Internal
         {
             var tk = _tokens[_currentTokenIdx];
             if (tk.Kind != kind)
-                throw new System.Exception($"Expected {Token.TokenTypeToString(kind)}, got {tk} (at {tk.SourceLocation})");
+                throw new System.Exception($"Expected {Token.TokenTypeToString(kind)} got {tk} (at {tk.SourceLocation})");
 
             ++_currentTokenIdx;
             return tk;
@@ -404,6 +407,7 @@ namespace GameKit.Scripting.Internal
                 '-' => TokenKind.Minus,
                 '*' => TokenKind.Star,
                 '>' => TokenKind.CmpGt,
+                ':' => TokenKind.Colon,
                 _ => throw new System.Exception("Todo"),
             };
         }

@@ -61,7 +61,7 @@ namespace GameKit.Scripting.Internal
                 File.AppendAllText("E:\\stmt.txt", $"=== {f} ===\n");
                 foreach (var st in f.Statements)
                 {
-                    File.AppendAllText("E:\\stmt.txt", $"{st.ToString("")}\n");
+                    File.AppendAllText("E:\\stmt.txt", $"{st.ToString("\t")}\n\n");
                 }
                 File.AppendAllText("E:\\stmt.txt", "\n");
             }
@@ -118,8 +118,10 @@ namespace GameKit.Scripting.Internal
         {
             var tk = _lexer.Accept(TokenKind.Property);
             var name = _lexer.Accept(TokenKind.NonTerminal);
+            _lexer.Accept(TokenKind.Colon);
+            var type = _lexer.Accept(TokenKind.NonTerminal);
             _lexer.Accept(TokenKind.Semicolon);
-            return new PropertyDecl { Name = name.Content, SourceLocation = tk.SourceLocation };
+            return new PropertyDecl { Name = name.Content, Type = type.Content, SourceLocation = tk.SourceLocation };
         }
 
         Statement ParseReturn()

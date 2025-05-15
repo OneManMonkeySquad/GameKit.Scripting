@@ -64,10 +64,7 @@ namespace GameKit.Scripting.Runtime
 
                 //
                 var entity = GetEntity(authoring.TransformUsage);
-                AddComponent(entity, new AttachedScript
-                {
-                    Script = result
-                });
+                AddComponent(entity, new AttachedScript { Script = result });
 
                 var eventBuff = AddBuffer<ScriptEvent>(entity);
                 eventBuff.Add(new ScriptEvent { Name = "on_init" });

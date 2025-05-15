@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using GameKit.Scripting.Runtime;
@@ -12,62 +13,6 @@ using UnityEngine;
 
 namespace GameKit.Scripting.Internal
 {
-    public class CompiledScript
-    {
-        Dictionary<string, Delegate> _functions;
-        Dictionary<string, FieldInfo> _properties;
-
-        public CompiledScript(Dictionary<string, Delegate> functions, Dictionary<string, FieldInfo> properties)
-        {
-            _functions = functions;
-            _properties = properties;
-        }
-
-        public void SetProperty(string name, Value value)
-        {
-            _properties[name].SetValue(null, value);
-        }
-
-        public void CopyPropertiesTo(CompiledScript other)
-        {
-            foreach (var entry in _properties)
-            {
-                other.SetProperty(entry.Key, (Value)entry.Value.GetValue(null));
-            }
-        }
-
-        public bool HasFunction(string name)
-        {
-            return _functions.ContainsKey(name);
-        }
-
-        public void Execute(string name)
-        {
-            _functions[name].DynamicInvoke();
-        }
-
-        public void Execute(string name, Value arg0)
-        {
-            _functions[name].DynamicInvoke(arg0);
-        }
-
-        public void TryExecute(string name)
-        {
-            if (_functions.TryGetValue(name, out var method))
-            {
-                method.DynamicInvoke();
-            }
-        }
-
-        public void TryExecute(string name, Value arg0)
-        {
-            if (_functions.TryGetValue(name, out var method))
-            {
-                method.DynamicInvoke(arg0);
-            }
-        }
-    }
-
     public class ILCompiler
     {
         public static string Output;
@@ -80,6 +25,20 @@ namespace GameKit.Scripting.Internal
 
         static int numRecompiles = 0;
 
+        static Type ByName(string name)
+        {
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies().Reverse())
+            {
+                var tt = assembly.GetType(name);
+                if (tt != null)
+                {
+                    return tt;
+                }
+            }
+
+            throw new Exception($"Type '{name}' not found");
+        }
+
         public CompiledScript Compile(Ast ast)
         {
             File.WriteAllText("E:\\il.txt", "");
@@ -91,12 +50,15 @@ namespace GameKit.Scripting.Internal
             var modBuilder = asmBuilder.DefineDynamicModule("MyModule");
             var typeBuilder = modBuilder.DefineType("MyDynamicType" + numRecompiles, TypeAttributes.Public | TypeAttributes.Class);
 
+            // Create Fields for every property
             var properties = new Dictionary<string, FieldInfo>();
             foreach (var prop in ast.Properties)
             {
+                var type = ByName(prop.Type);
+
                 var staticField = typeBuilder.DefineField(
                       prop.Name,
-                      typeof(Value),
+                      type,
                       FieldAttributes.Public | FieldAttributes.Static
                 );
                 properties.Add(prop.Name, staticField);
@@ -238,8 +200,26 @@ namespace GameKit.Scripting.Internal
                             il.Stloc(local);
                             break;
                         case VariableSource.Property:
-                            il.Stfld(globals.Properties[assignment.VariableName]);
-                            break;
+                            {
+                                var prop = globals.Properties[assignment.VariableName];
+                                if (prop.FieldType == typeof(Entity))
+                                {
+                                    var cast = typeof(Value).GetMethods().Single(m => m.Name == "op_Explicit" && m.ReturnType == typeof(Entity));
+                                    il.Call(cast);
+                                }
+                                else if (prop.FieldType == typeof(int))
+                                {
+                                    var cast = typeof(Value).GetMethods().Single(m => m.Name == "op_Explicit" && m.ReturnType == typeof(int));
+                                    il.Call(cast);
+                                }
+                                else
+                                {
+                                    throw new Exception("case missing");
+                                }
+
+                                il.Stfld(prop);
+                                break;
+                            }
                         default:
                             throw new Exception("missing case (assignment)");
                     }
@@ -340,21 +320,6 @@ namespace GameKit.Scripting.Internal
                             il.Call(typeof(Value).GetMethod("FromDouble"));
                             break;
 
-                        case ValueTypeIdx.Entity:
-                            // #todo do we really need this?
-                            var loc = il.DeclareLocal(typeof(Entity));
-                            il.Ldloca(loc);
-                            il.Initobj(typeof(Entity));
-                            il.Ldloca(loc);
-                            il.Ldc_I4(var.Value.AsEntity.Index);
-                            il.Stfld(typeof(Entity).GetField("Index"));
-                            il.Ldloca(loc);
-                            il.Ldc_I4(var.Value.AsEntity.Version);
-                            il.Stfld(typeof(Entity).GetField("Version"));
-                            il.Ldloc(loc);
-                            il.Call(typeof(Value).GetMethod("FromEntity"));
-                            break;
-
                         default:
                             throw new Exception("case missing (value)");
                     }
@@ -371,8 +336,24 @@ namespace GameKit.Scripting.Internal
                             il.Ldarg(var.ScopeInfo.ArgumentIdx);
                             break;
                         case VariableSource.Property:
-                            il.Ldfld(globals.Properties[var.Name]);
-                            break;
+                            {
+                                var prop = globals.Properties[var.Name];
+                                il.Ldfld(prop);
+
+                                if (prop.FieldType == typeof(Entity))
+                                {
+                                    il.Call(typeof(Value).GetMethod("FromEntity"));
+                                }
+                                else if (prop.FieldType == typeof(int))
+                                {
+                                    il.Call(typeof(Value).GetMethod("FromInt"));
+                                }
+                                else
+                                {
+                                    throw new Exception("case missing");
+                                }
+                                break;
+                            }
                         default:
                             throw new Exception("case missing (variable source)");
                     }
