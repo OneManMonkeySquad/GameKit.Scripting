@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
 using GameKit.Scripting.Runtime;
-using Unity.Entities;
 
 namespace GameKit.Scripting.Internal
 {
@@ -121,7 +120,7 @@ namespace GameKit.Scripting.Internal
             _lexer.Accept(TokenKind.Colon);
             var type = _lexer.Accept(TokenKind.NonTerminal);
             _lexer.Accept(TokenKind.Semicolon);
-            return new PropertyDecl { Name = name.Content, Type = type.Content, SourceLocation = tk.SourceLocation };
+            return new PropertyDecl { Name = name.Content, TypeName = type.Content, SourceLocation = tk.SourceLocation };
         }
 
         Statement ParseReturn()

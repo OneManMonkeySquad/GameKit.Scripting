@@ -25,20 +25,6 @@ namespace GameKit.Scripting.Internal
 
         static int numRecompiles = 0;
 
-        static Type ByName(string name)
-        {
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies().Reverse())
-            {
-                var tt = assembly.GetType(name);
-                if (tt != null)
-                {
-                    return tt;
-                }
-            }
-
-            throw new Exception($"Type '{name}' not found");
-        }
-
         public CompiledScript Compile(Ast ast)
         {
             File.WriteAllText("E:\\il.txt", "");
@@ -54,7 +40,7 @@ namespace GameKit.Scripting.Internal
             var properties = new Dictionary<string, FieldInfo>();
             foreach (var prop in ast.Properties)
             {
-                var type = ByName(prop.Type);
+                var type = ScriptingTypeCache.ByName(prop.TypeName);
 
                 var staticField = typeBuilder.DefineField(
                       prop.Name,

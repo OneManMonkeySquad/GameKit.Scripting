@@ -1,6 +1,7 @@
 using UnityEngine;
 using Unity.Entities;
 using Unity.Collections;
+using GameKit.Scripting.Internal;
 
 namespace GameKit.Scripting.Runtime
 {
@@ -20,6 +21,7 @@ namespace GameKit.Scripting.Runtime
     public struct PropertyValue : IBufferElementData
     {
         public FixedString32Bytes Name; // #todo this should be baked into BakedScript
+        public UnityObjectRef<Object> ValueManaged;
         public Value Value;
     }
 
@@ -35,7 +37,9 @@ namespace GameKit.Scripting.Runtime
         public TransformUsageFlags TransformUsage;
 
         public string[] PropertyNames;
-        public GameObject[] PropertyValues;
+        public string[] PropertyTypeNames;
+        public Object[] PropertyValuesManaged;
+        public Value[] PropertyValuesPod;
 
         public class Baker : Baker<AttachedScriptAuthoring>
         {
@@ -70,16 +74,38 @@ namespace GameKit.Scripting.Runtime
                 eventBuff.Add(new ScriptEvent { Name = "on_init" });
 
                 var propertyBuff = AddBuffer<PropertyValue>(entity);
-                if (authoring.PropertyValues != null)
+                if (authoring.PropertyValuesManaged != null)
                 {
-                    for (int i = 0; i < authoring.PropertyValues.Length; ++i)
+                    for (int i = 0; i < authoring.PropertyTypeNames.Length; ++i)
                     {
                         var value = new PropertyValue { };
                         value.Name = authoring.PropertyNames[i];
-                        if (authoring.PropertyValues[i] != null)
+
+                        var propertyTypeName = authoring.PropertyTypeNames[i];
+                        var propertyType = ScriptingTypeCache.ByName(propertyTypeName);
+                        if (!propertyType.IsClass && propertyType != typeof(Entity))
                         {
-                            value.Value = Value.FromEntity(GetEntity(authoring.PropertyValues[i], TransformUsageFlags.None));
+                            if (propertyType == typeof(int))
+                            {
+                                value.Value = authoring.PropertyValuesPod[i];
+                            }
+                            else
+                            {
+                                Debug.LogError("Missing");
+                            }
                         }
+                        else
+                        {
+                            if (propertyType == typeof(Entity))
+                            {
+                                value.Value = Value.FromEntity(GetEntity((GameObject)authoring.PropertyValuesManaged[i], TransformUsageFlags.None));
+                            }
+                            else
+                            {
+                                value.ValueManaged = authoring.PropertyValuesManaged[i];
+                            }
+                        }
+
                         propertyBuff.Add(value);
                     }
                 }

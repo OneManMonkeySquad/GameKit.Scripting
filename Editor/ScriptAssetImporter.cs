@@ -31,6 +31,7 @@ namespace GameKit.Scripting
                 asset.Code = code;
                 asset.FileNameHint = ctx.assetPath;
                 asset.PropertyNames = ast.Properties.Select(p => p.Name).ToList();
+                asset.PropertyTypeNames = ast.Properties.Select(p => p.TypeName).ToList();
 
                 asset.LastCompilationFailed = false;
 

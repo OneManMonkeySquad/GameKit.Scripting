@@ -45,8 +45,11 @@ namespace GameKit.Scripting.Runtime
                 default:
                     throw new Exception("case missing " + value.Type);
             }
+        }
 
-
+        public void SetProperty(string name, object value)
+        {
+            _properties[name].SetValue(null, value);
         }
 
         public void CopyStateTo(CompiledScript other)

@@ -28,7 +28,15 @@ namespace GameKit.Scripting.Runtime
 
                 for (int i = 0; i < props.Length; ++i)
                 {
-                    compiledScript.SetProperty(props[i].Name.ToString(), props[i].Value);
+                    var prop = props[i];
+                    if (prop.ValueManaged)
+                    {
+                        compiledScript.SetProperty(prop.Name.ToString(), prop.ValueManaged.Value);
+                    }
+                    else
+                    {
+                        compiledScript.SetProperty(prop.Name.ToString(), prop.Value);
+                    }
                 }
 
                 ecb.AddComponent(entity, new AttachedCompiledScript

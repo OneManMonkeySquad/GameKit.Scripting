@@ -6,6 +6,7 @@ namespace GameKit.Scripting.Runtime
 {
     public enum ValueTypeIdx : byte { Null, Bool, Int, Float, Double, Entity, StringIdx }
 
+    [Serializable]
     [StructLayout(LayoutKind.Explicit)]
     public struct Value
     {
@@ -24,6 +25,8 @@ namespace GameKit.Scripting.Runtime
 
         [FieldOffset(8)]
         public ValueTypeIdx Type;
+
+        public bool IsNull => Type == ValueTypeIdx.Null;
 
         public static Value FromBool(bool b) => new() { Type = ValueTypeIdx.Bool, AsBool = b };
         public static Value FromInt(int i) => new() { Type = ValueTypeIdx.Int, AsInt = i };

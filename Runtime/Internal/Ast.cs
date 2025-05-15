@@ -190,9 +190,9 @@ namespace GameKit.Scripting.Internal
     public class PropertyDecl : Statement
     {
         public string Name;
-        public string Type;
+        public string TypeName;
 
-        public override string ToString(string padding) => $"[Property {Type} '{Name}']";
+        public override string ToString(string padding) => $"[Property {TypeName} '{Name}']";
     }
 
     public class FunctionDecl : Statement

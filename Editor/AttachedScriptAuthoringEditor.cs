@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using GameKit.Scripting.Internal;
 using GameKit.Scripting.Runtime;
 using Unity.Entities;
 using UnityEditor;
@@ -38,36 +39,68 @@ namespace GameKit.Scripting
                     EditorGUILayout.LabelField("Properties", EditorStyles.boldLabel);
                     EditorGUILayout.BeginVertical("box"); // Start boxed section
 
-                    if (script.PropertyValues == null)
+                    if (script.PropertyValuesManaged == null || script.PropertyValuesManaged.Length != script.Asset.PropertyNames.Count)
                     {
-                        script.PropertyValues = new GameObject[script.Asset.PropertyNames.Count];
-                        script.PropertyNames = script.Asset.PropertyNames.ToArray();
-                    }
-                    else if (script.PropertyValues.Length != script.Asset.PropertyNames.Count)
-                    {
-                        var newPropertyValues = new GameObject[script.Asset.PropertyNames.Count];
+                        var newPropertyValuesManaged = new UnityEngine.Object[script.Asset.PropertyNames.Count];
+                        var newPropertyValuesPod = new Value[script.Asset.PropertyNames.Count];
 
-                        for (int i = 0; i < script.Asset.PropertyNames.Count; ++i)
+                        if (script.PropertyValuesManaged != null)
                         {
-                            var newName = script.Asset.PropertyNames[i];
-
-                            var oldIdx = Array.IndexOf(script.PropertyNames, newName);
-                            if (oldIdx != -1)
+                            for (int i = 0; i < script.Asset.PropertyNames.Count; ++i)
                             {
-                                newPropertyValues[i] = script.PropertyValues[i];
+                                var newName = script.Asset.PropertyNames[i];
+
+                                var oldIdx = Array.IndexOf(script.PropertyNames, newName);
+                                if (oldIdx != -1)
+                                {
+                                    newPropertyValuesManaged[i] = script.PropertyValuesManaged[i];
+                                    newPropertyValuesPod[i] = script.PropertyValuesPod[i];
+                                }
                             }
                         }
 
-                        script.PropertyValues = newPropertyValues;
+                        script.PropertyValuesManaged = newPropertyValuesManaged;
+                        script.PropertyValuesPod = newPropertyValuesPod;
                         script.PropertyNames = script.Asset.PropertyNames.ToArray();
+                        script.PropertyTypeNames = script.Asset.PropertyTypeNames.ToArray();
+
+                        EditorUtility.SetDirty(target);
+
+                        return; // Make sure to init once without the rest breaking stuff
                     }
                     // #todo handle other changes: order, types
 
                     for (int i = 0; i < script.Asset.PropertyNames.Count; i++)
                     {
                         string prop = script.Asset.PropertyNames[i];
-                        var newValue = (GameObject)EditorGUILayout.ObjectField(prop, script.PropertyValues[i], typeof(GameObject), allowSceneObjects: true);
-                        script.PropertyValues[i] = newValue;
+                        string propTypeName = script.Asset.PropertyTypeNames[i];
+
+                        var propertyType = ScriptingTypeCache.ByName(propTypeName);
+                        if (!propertyType.IsClass && propertyType != typeof(Entity))
+                        {
+                            if (propertyType == typeof(int))
+                            {
+                                var newValue = EditorGUILayout.IntField(prop, !script.PropertyValuesPod[i].IsNull ? script.PropertyValuesPod[i].AsInt : 0);
+                                script.PropertyValuesPod[i] = Value.FromInt(newValue);
+                            }
+                            else
+                            {
+                                Debug.LogError("Missing");
+                            }
+                        }
+                        else
+                        {
+                            if (propertyType == typeof(Entity))
+                            {
+                                var newValue = EditorGUILayout.ObjectField(prop, script.PropertyValuesManaged[i], typeof(GameObject), allowSceneObjects: true);
+                                script.PropertyValuesManaged[i] = newValue;
+                            }
+                            else
+                            {
+                                var newValue = EditorGUILayout.ObjectField(prop, script.PropertyValuesManaged[i], propertyType, allowSceneObjects: true);
+                                script.PropertyValuesManaged[i] = newValue;
+                            }
+                        }
                     }
 
                     EditorGUILayout.EndVertical(); // End boxed section
