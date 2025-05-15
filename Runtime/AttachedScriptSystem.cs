@@ -28,15 +28,42 @@ namespace GameKit.Scripting.Runtime
 
                 for (int i = 0; i < props.Length; ++i)
                 {
+                    object value;
+
                     var prop = props[i];
                     if (prop.ValueManaged)
                     {
-                        compiledScript.SetProperty(prop.Name.ToString(), prop.ValueManaged.Value);
+                        value = prop.ValueManaged.Value;
                     }
                     else
                     {
-                        compiledScript.SetProperty(prop.Name.ToString(), prop.Value);
+                        switch (prop.Value.Type)
+                        {
+                            case ValueTypeIdx.Null:
+                                value = null;
+                                break;
+                            case ValueTypeIdx.Bool:
+                                value = prop.Value.AsBool;
+                                break;
+                            case ValueTypeIdx.Int:
+                                value = prop.Value.AsInt;
+                                break;
+                            case ValueTypeIdx.Float:
+                                value = prop.Value.AsFloat;
+                                break;
+                            case ValueTypeIdx.Double:
+                                value = prop.Value.AsDouble;
+                                break;
+                            case ValueTypeIdx.Entity:
+                                value = prop.Value.AsEntity;
+                                break;
+
+                            default:
+                                throw new System.Exception("missing case");
+                        }
                     }
+
+                    compiledScript.SetProperty(prop.Name.ToString(), value);
                 }
 
                 ecb.AddComponent(entity, new AttachedCompiledScript
@@ -69,7 +96,7 @@ namespace GameKit.Scripting.Runtime
                 {
                     foreach (var evt in events)
                     {
-                        script.Script.Execute(evt.Name.ToString(), Value.FromEntity(entity));
+                        script.Script.Execute(evt.Name.ToString(), entity);
                     }
 
                     events.RemoveRange(0, numEvents); // Instead of clear, execution could have added more events

@@ -4,13 +4,13 @@ using Unity.Entities;
 
 namespace GameKit.Scripting.Runtime
 {
-    public enum ValueTypeIdx : byte { Null, Bool, Int, Float, Double, Entity, StringIdx }
+    public enum ValueTypeIdx : byte { Null, Bool, Int, Float, Double, Entity }
 
     [Serializable]
     [StructLayout(LayoutKind.Explicit)]
-    public struct Value
+    public struct PodValue
     {
-        public static readonly Value Null = new Value { Type = ValueTypeIdx.Null };
+        public static readonly PodValue Null = new PodValue { Type = ValueTypeIdx.Null };
 
         [FieldOffset(0)]
         public bool AsBool;
@@ -28,12 +28,11 @@ namespace GameKit.Scripting.Runtime
 
         public bool IsNull => Type == ValueTypeIdx.Null;
 
-        public static Value FromBool(bool b) => new() { Type = ValueTypeIdx.Bool, AsBool = b };
-        public static Value FromInt(int i) => new() { Type = ValueTypeIdx.Int, AsInt = i };
-        public static Value FromFloat(float f) => new() { Type = ValueTypeIdx.Float, AsFloat = f };
-        public static Value FromDouble(double d) => new() { Type = ValueTypeIdx.Double, AsDouble = d };
-        public static Value FromEntity(Entity e) => new() { Type = ValueTypeIdx.Entity, AsEntity = e };
-        public static Value FromStringIdx(int i) => new() { Type = ValueTypeIdx.StringIdx, AsInt = i };
+        public static PodValue FromBool(bool b) => new() { Type = ValueTypeIdx.Bool, AsBool = b };
+        public static PodValue FromInt(int i) => new() { Type = ValueTypeIdx.Int, AsInt = i };
+        public static PodValue FromFloat(float f) => new() { Type = ValueTypeIdx.Float, AsFloat = f };
+        public static PodValue FromDouble(double d) => new() { Type = ValueTypeIdx.Double, AsDouble = d };
+        public static PodValue FromEntity(Entity e) => new() { Type = ValueTypeIdx.Entity, AsEntity = e };
 
         public override string ToString() => Type switch
         {
@@ -43,18 +42,17 @@ namespace GameKit.Scripting.Runtime
             ValueTypeIdx.Float => AsFloat.ToString(),
             ValueTypeIdx.Double => AsDouble.ToString(),
             ValueTypeIdx.Entity => AsEntity.ToString(),
-            ValueTypeIdx.StringIdx => AsInt.ToString(),
             _ => throw new Exception("Todo ToString"),
         };
 
-        public static explicit operator int(Value v) => v.Type switch
+        public static explicit operator int(PodValue v) => v.Type switch
         {
             ValueTypeIdx.Int => v.AsInt,
             ValueTypeIdx.Bool => v.AsBool ? 1 : 0,
             _ => throw new Exception($"Invalid cast {v.Type} -> int"),
         };
 
-        public static explicit operator float(Value v) => v.Type switch
+        public static explicit operator float(PodValue v) => v.Type switch
         {
             ValueTypeIdx.Int => v.AsInt,
             ValueTypeIdx.Float => v.AsFloat,
@@ -62,7 +60,7 @@ namespace GameKit.Scripting.Runtime
             _ => throw new Exception($"Invalid cast {v.Type} -> float"),
         };
 
-        public static explicit operator double(Value v) => v.Type switch
+        public static explicit operator double(PodValue v) => v.Type switch
         {
             ValueTypeIdx.Int => v.AsInt,
             ValueTypeIdx.Float => v.AsFloat,
@@ -70,14 +68,14 @@ namespace GameKit.Scripting.Runtime
             _ => throw new Exception($"Invalid cast {v.Type} -> double"),
         };
 
-        public static explicit operator bool(Value v) => v.Type switch
+        public static explicit operator bool(PodValue v) => v.Type switch
         {
             ValueTypeIdx.Int => v.AsInt != 0,
             ValueTypeIdx.Bool => v.AsBool,
             _ => throw new Exception($"Invalid cast {v.Type} -> bool"),
         };
 
-        public static explicit operator Entity(Value v) => v.Type switch
+        public static explicit operator Entity(PodValue v) => v.Type switch
         {
             ValueTypeIdx.Entity => v.AsEntity,
             ValueTypeIdx.Null => Entity.Null,

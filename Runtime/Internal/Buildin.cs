@@ -8,20 +8,17 @@ namespace GameKit.Scripting.Internal
 {
     public static class Buildin
     {
-        static List<string> strings = new();
-
         [Scriptable("print")]
-        public static void Print(Value val)
+        public static void Print(object val)
         {
-            var str = val.Type switch
+            var str = val switch
             {
-                ValueTypeIdx.Null => "null",
-                ValueTypeIdx.Bool => val.AsBool ? "true" : "false",
-                ValueTypeIdx.Int => val.AsInt.ToString(),
-                ValueTypeIdx.Float => val.AsFloat.ToString(),
-                ValueTypeIdx.Double => val.AsDouble.ToString(),
-                ValueTypeIdx.Entity => val.AsEntity.ToString(),
-                ValueTypeIdx.StringIdx => strings[val.AsInt],
+                bool b => b ? "true" : "false",
+                int i => i.ToString(),
+                float f => f.ToString(),
+                double d => d.ToString(),
+                Entity e => e.ToString(),
+                string s => s,
                 _ => throw new Exception("Todo ToString"),
             };
 
@@ -32,111 +29,91 @@ namespace GameKit.Scripting.Internal
             }
         }
 
-        public static Value CreateString(string str)
-        {
-            var idx = strings.Count;
-            strings.Add(str);
-            return Value.FromStringIdx(idx);
-        }
-
-        public static string GetString(Value str)
-        {
-            if (str.Type != ValueTypeIdx.StringIdx)
-                throw new Exception("Unexpected types for GetString " + str.Type);
-
-            return strings[str.AsInt];
-        }
-
-        public static bool ConvertValueToBool(Value val)
+        public static bool ConvertValueToBool(object val)
         {
             return (bool)val;
         }
 
-        public static Value Negate(Value value)
+        public static object Negate(object value)
         {
-            return value.Type switch
+            return value switch
             {
-                ValueTypeIdx.Null => Value.Null,
-                ValueTypeIdx.Int => Value.FromInt(-value.AsInt),
-                ValueTypeIdx.Float => Value.FromFloat(-value.AsFloat),
-                ValueTypeIdx.Double => Value.FromDouble(-value.AsDouble),
-                _ => throw new Exception("Unexpected types for Negate " + value.Type),
+                int i => -i,
+                float f => -f,
+                double d => -d,
+                _ => throw new Exception("Unexpected types for Negate " + value.GetType()),
             };
         }
 
-        public static Value Add(Value left, Value right)
+        public static object Add(object left, object right)
         {
-            return (left.Type, right.Type) switch
+            return (left, right) switch
             {
-                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromInt(left.AsInt + right.AsInt),
-                (ValueTypeIdx.Float, ValueTypeIdx.Float) => Value.FromFloat(left.AsFloat + right.AsFloat),
-                (ValueTypeIdx.Float, ValueTypeIdx.Double) => Value.FromDouble(left.AsFloat + right.AsDouble),
-                (ValueTypeIdx.Double, ValueTypeIdx.Float) => Value.FromDouble(left.AsDouble + right.AsFloat),
-                (ValueTypeIdx.StringIdx, ValueTypeIdx.StringIdx) => CreateString(strings[left.AsInt] + strings[right.AsInt]),
-                (ValueTypeIdx.StringIdx, ValueTypeIdx.Entity) => CreateString(strings[left.AsInt] + right.AsEntity),
-                _ => throw new Exception("Unexpected types for Add " + (left.Type, right.Type)),
+                (int l, int r) => l + r,
+                (float l, float r) => l + r,
+                (float l, double r) => l + r,
+                (double l, float r) => l + r,
+                (string l, string r) => l + r,
+                (string l, Entity r) => l + r,
+                _ => throw new Exception("Unexpected types for Add " + (left.GetType(), right.GetType())),
             };
         }
 
-        public static Value Mul(Value left, Value right)
+        public static object Mul(object left, object right)
         {
-            return (left.Type, right.Type) switch
+            return (left, right) switch
             {
-                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromInt(left.AsInt * right.AsInt),
-                (ValueTypeIdx.Double, ValueTypeIdx.Int) => Value.FromDouble(left.AsDouble * right.AsInt),
-                (ValueTypeIdx.Double, ValueTypeIdx.Float) => Value.FromDouble(left.AsDouble * right.AsFloat),
-                _ => throw new Exception("Unexpected types for Mul " + (left.Type, right.Type)),
+                (int l, int r) => l * r,
+                (double l, int r) => l * r,
+                (double l, float r) => l * r,
+                _ => throw new Exception("Unexpected types for Mul " + (left.GetType(), right.GetType())),
             };
         }
 
-        public static Value CmpEq(Value left, Value right)
+        public static object CmpEq(object left, object right)
         {
-            return (left.Type, right.Type) switch
+            return (left, right) switch
             {
-                (ValueTypeIdx.Null, ValueTypeIdx.Null) => Value.FromBool(true),
-                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromBool(left.AsInt == right.AsInt),
-                (ValueTypeIdx.Entity, ValueTypeIdx.Null) => Value.FromBool(left.AsEntity == Entity.Null),
-                (ValueTypeIdx.Entity, ValueTypeIdx.Entity) => Value.FromBool(left.AsEntity == right.AsEntity),
-                _ => throw new Exception("Unexpected types for CmpEq " + (left.Type, right.Type)),
+                (int l, int r) => l == r,
+                (Entity l, Entity r) => l == r,
+                _ => throw new Exception("Unexpected types for CmpEq " + (left.GetType(), right.GetType())),
             };
         }
 
-        public static Value CmpNEq(Value left, Value right)
+        public static object CmpNEq(object left, object right)
         {
-            return (left.Type, right.Type) switch
+            return (left, right) switch
             {
-                (ValueTypeIdx.Null, ValueTypeIdx.Null) => Value.FromBool(false),
-                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromBool(left.AsInt != right.AsInt),
-                (ValueTypeIdx.Entity, ValueTypeIdx.Null) => Value.FromBool(left.AsEntity != Entity.Null),
-                (ValueTypeIdx.Entity, ValueTypeIdx.Entity) => Value.FromBool(left.AsEntity != right.AsEntity),
-                _ => throw new Exception("Unexpected types for CmpEq " + (left.Type, right.Type)),
+                (int l, int r) => l != r,
+                (Entity l, Entity r) => l != r,
+                _ => throw new Exception("Unexpected types for CmpEq " + (left.GetType(), right.GetType())),
             };
         }
 
-        public static Value Greater(Value left, Value right)
+        public static object Greater(object left, object right)
         {
-            return (left.Type, right.Type) switch
+            return (left, right) switch
             {
-                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromBool(left.AsInt > right.AsInt),
-                _ => throw new Exception("Unexpected types for Greater " + (left.Type, right.Type)),
+                (int l, int r) => l > r,
+                _ => throw new Exception("Unexpected types for Greater " + (left.GetType(), right.GetType())),
             };
         }
 
-        public static Value LEqual(Value left, Value right)
+        public static object LEqual(object left, object right)
         {
-            return (left.Type, right.Type) switch
+            return (left, right) switch
             {
-                (ValueTypeIdx.Int, ValueTypeIdx.Int) => Value.FromBool(left.AsInt <= right.AsInt),
-                _ => throw new Exception("Unexpected types for LEqual " + (left.Type, right.Type)),
+                (int l, int r) => l <= r,
+                _ => throw new Exception("Unexpected types for LEqual " + (left.GetType(), right.GetType())),
             };
         }
 
-        public static Value And(Value left, Value right)
+        public static object And(object left, object right)
         {
-            return (left.Type, right.Type) switch
+            return (left, right) switch
             {
-                (ValueTypeIdx.Bool, ValueTypeIdx.Bool) => Value.FromBool(left.AsBool && right.AsBool),
-                _ => throw new Exception("Unexpected types for and " + (left.Type, right.Type)),
+                (bool l, bool r) => l && r,
+                _ => throw new Exception("Unexpected types for and " + (left.GetType(), right.GetType())),
             };
         }
     }

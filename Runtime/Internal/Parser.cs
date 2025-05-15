@@ -354,32 +354,32 @@ namespace GameKit.Scripting.Internal
             if (_lexer.Peek(TokenKind.Null))
             {
                 var tk = _lexer.Accept(TokenKind.Null);
-                return new ValueExpr { Value = Value.Null, SourceLocation = tk.SourceLocation };
+                return new ValueExpr { Value = null, ValueType = ValueType.Null, SourceLocation = tk.SourceLocation };
             }
             else if (_lexer.Peek(TokenKind.String))
             {
-                var val = _lexer.Accept(TokenKind.String);
-                return new StringExpr { Content = val.Content, SourceLocation = val.SourceLocation };
+                var tk = _lexer.Accept(TokenKind.String);
+                return new ValueExpr { Value = tk.Content, ValueType = ValueType.String, SourceLocation = tk.SourceLocation };
             }
             else if (_lexer.Peek(TokenKind.Integer))
             {
-                var val = _lexer.Accept(TokenKind.Integer);
-                return new ValueExpr { Value = Value.FromInt(int.Parse(val.Content)), SourceLocation = val.SourceLocation };
+                var tk = _lexer.Accept(TokenKind.Integer);
+                return new ValueExpr { Value = int.Parse(tk.Content), ValueType = ValueType.Int, SourceLocation = tk.SourceLocation };
             }
             else if (_lexer.Peek(TokenKind.Boolean))
             {
-                var val = _lexer.Accept(TokenKind.Boolean);
-                return new ValueExpr { Value = Value.FromBool(bool.Parse(val.Content)), SourceLocation = val.SourceLocation };
+                var tk = _lexer.Accept(TokenKind.Boolean);
+                return new ValueExpr { Value = bool.Parse(tk.Content), ValueType = ValueType.Bool, SourceLocation = tk.SourceLocation };
             }
             else if (_lexer.Peek(TokenKind.Float))
             {
-                var val = _lexer.Accept(TokenKind.Float);
-                return new ValueExpr { Value = Value.FromFloat(float.Parse(val.Content)), SourceLocation = val.SourceLocation };
+                var tk = _lexer.Accept(TokenKind.Float);
+                return new ValueExpr { Value = float.Parse(tk.Content), ValueType = ValueType.Float, SourceLocation = tk.SourceLocation };
             }
             else if (_lexer.Peek(TokenKind.Double))
             {
-                var val = _lexer.Accept(TokenKind.Double);
-                return new ValueExpr { Value = Value.FromDouble(double.Parse(val.Content)), SourceLocation = val.SourceLocation };
+                var tk = _lexer.Accept(TokenKind.Double);
+                return new ValueExpr { Value = double.Parse(tk.Content), ValueType = ValueType.Double, SourceLocation = tk.SourceLocation };
             }
             else if (_lexer.Peek(TokenKind.ParenOpen))
             {

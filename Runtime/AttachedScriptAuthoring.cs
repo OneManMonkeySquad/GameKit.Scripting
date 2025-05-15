@@ -22,7 +22,7 @@ namespace GameKit.Scripting.Runtime
     {
         public FixedString32Bytes Name; // #todo this should be baked into BakedScript
         public UnityObjectRef<Object> ValueManaged;
-        public Value Value;
+        public PodValue Value;
     }
 
     [InternalBufferCapacity(0)]
@@ -39,7 +39,7 @@ namespace GameKit.Scripting.Runtime
         public string[] PropertyNames;
         public string[] PropertyTypeNames;
         public Object[] PropertyValuesManaged;
-        public Value[] PropertyValuesPod;
+        public PodValue[] PropertyValuesPod;
 
         public class Baker : Baker<AttachedScriptAuthoring>
         {
@@ -98,7 +98,7 @@ namespace GameKit.Scripting.Runtime
                         {
                             if (propertyType == typeof(Entity))
                             {
-                                value.Value = Value.FromEntity(GetEntity((GameObject)authoring.PropertyValuesManaged[i], TransformUsageFlags.None));
+                                value.Value = PodValue.FromEntity(GetEntity((GameObject)authoring.PropertyValuesManaged[i], TransformUsageFlags.None));
                             }
                             else
                             {

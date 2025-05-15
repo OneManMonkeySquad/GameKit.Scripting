@@ -42,7 +42,7 @@ namespace GameKit.Scripting
                     if (script.PropertyValuesManaged == null || script.PropertyValuesManaged.Length != script.Asset.PropertyNames.Count)
                     {
                         var newPropertyValuesManaged = new UnityEngine.Object[script.Asset.PropertyNames.Count];
-                        var newPropertyValuesPod = new Value[script.Asset.PropertyNames.Count];
+                        var newPropertyValuesPod = new PodValue[script.Asset.PropertyNames.Count];
 
                         if (script.PropertyValuesManaged != null)
                         {
@@ -81,7 +81,7 @@ namespace GameKit.Scripting
                             if (propertyType == typeof(int))
                             {
                                 var newValue = EditorGUILayout.IntField(prop, !script.PropertyValuesPod[i].IsNull ? script.PropertyValuesPod[i].AsInt : 0);
-                                script.PropertyValuesPod[i] = Value.FromInt(newValue);
+                                script.PropertyValuesPod[i] = PodValue.FromInt(newValue);
                             }
                             else
                             {

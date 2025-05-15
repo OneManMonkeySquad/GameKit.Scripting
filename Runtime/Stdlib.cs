@@ -8,9 +8,9 @@ namespace GameKit.Scripting.Runtime
     public static class Stdlib
     {
         [Scriptable("panic")]
-        public static void Panic(Value str)
+        public static void Panic(object str)
         {
-            Debug.LogError("PANIC: " + Buildin.GetString(str));
+            Debug.LogError("PANIC: " + str);
 #if UNITY_EDITOR
             Debug.Break();
 #else
@@ -19,16 +19,16 @@ namespace GameKit.Scripting.Runtime
         }
 
         [Scriptable("sin")]
-        public static Value Sin(Value val) => Value.FromDouble(math.sin((double)val));
+        public static object Sin(object val) => (float)math.sin((double)val);
 
         /// <summary>
         /// Call a scripting function the next frame.
         /// </summary>
         [Scriptable("queue_event")]
-        public static void QueueEvent(Value ent, Value name)
+        public static void QueueEvent(object ent, object name)
         {
             var buff = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<ScriptEvent>((Entity)ent);
-            buff.Add(new ScriptEvent { Name = Buildin.GetString(name) });
+            buff.Add(new ScriptEvent { Name = (string)name });
         }
     }
 }

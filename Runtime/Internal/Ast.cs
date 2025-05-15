@@ -231,18 +231,23 @@ namespace GameKit.Scripting.Internal
         }
     }
 
-    public class StringExpr : Expression
+    public enum ValueType
     {
-        public string Content;
-
-        public override string ToString(string padding) => padding + $"[String '{Content}']";
+        Null,
+        Bool,
+        Int,
+        Float,
+        Double,
+        Entity,
+        String,
     }
 
     public class ValueExpr : Expression
     {
-        public Value Value;
+        public ValueType ValueType;
+        public object Value;
 
-        public override string ToString(string padding) => padding + $"[Value {Value.Type} '{Value}']";
+        public override string ToString(string padding) => padding + $"[Value {ValueType} '{Value}']";
     }
 
     public class GroupingExpr : Expression

@@ -58,13 +58,13 @@ namespace GameKit.Scripting.Internal
                 var parameters = new Type[func.Parameters.Count];
                 for (int i = 0; i < func.Parameters.Count; ++i)
                 {
-                    parameters[i] = typeof(Value);
+                    parameters[i] = typeof(object);
                 }
 
                 Type resultType = null;
                 if (func.HasReturnValue)
                 {
-                    resultType = typeof(Value);
+                    resultType = typeof(object);
                 }
 
                 var mb = typeBuilder.DefineMethod(func.Name, MethodAttributes.Public | MethodAttributes.Static, resultType, parameters);
@@ -97,7 +97,7 @@ namespace GameKit.Scripting.Internal
                 }
                 else if (method.GetParameters().Length == 1)
                 {
-                    d = method.CreateDelegate(typeof(Action<Value>), null);
+                    d = method.CreateDelegate(typeof(Action<object>), null);
                 }
                 else
                 {
@@ -180,7 +180,7 @@ namespace GameKit.Scripting.Internal
                         case VariableSource.Local:
                             if (!localVars.TryGetValue(assignment.VariableName, out var local))
                             {
-                                local = il.DeclareLocal(typeof(Value));
+                                local = il.DeclareLocal(typeof(object));
                                 localVars.Add(assignment.VariableName, local);
                             }
                             il.Stloc(local);
@@ -188,21 +188,7 @@ namespace GameKit.Scripting.Internal
                         case VariableSource.Property:
                             {
                                 var prop = globals.Properties[assignment.VariableName];
-                                if (prop.FieldType == typeof(Entity))
-                                {
-                                    var cast = typeof(Value).GetMethods().Single(m => m.Name == "op_Explicit" && m.ReturnType == typeof(Entity));
-                                    il.Call(cast);
-                                }
-                                else if (prop.FieldType == typeof(int))
-                                {
-                                    var cast = typeof(Value).GetMethods().Single(m => m.Name == "op_Explicit" && m.ReturnType == typeof(int));
-                                    il.Call(cast);
-                                }
-                                else
-                                {
-                                    throw new Exception("case missing");
-                                }
-
+                                il.Unbox_Any(prop.FieldType);
                                 il.Stfld(prop);
                                 break;
                             }
@@ -213,7 +199,7 @@ namespace GameKit.Scripting.Internal
 
                 case LocalVariableDecl variableDecl:
                     VisitExpression(variableDecl.Value, il, globals, localVars);
-                    var local2 = il.DeclareLocal(typeof(Value));
+                    var local2 = il.DeclareLocal(typeof(object));
                     localVars.Add(variableDecl.VariableName, local2);
                     il.Stloc(local2);
                     break;
@@ -280,35 +266,40 @@ namespace GameKit.Scripting.Internal
             switch (expr)
             {
                 case ValueExpr var:
-                    switch (var.Value.Type)
+                    switch (var.ValueType)
                     {
-                        case ValueTypeIdx.Null:
-                            il.Ldfld(typeof(Value).GetField("Null"));
+                        case ValueType.Null:
+                            il.Ldnull();
                             break;
 
-                        case ValueTypeIdx.Bool:
-                            il.Ldc_I4(var.Value.AsBool ? 1 : 0);
-                            il.Call(typeof(Value).GetMethod("FromBool"));
+                        case ValueType.Bool:
+                            il.Ldc_I4((bool)var.Value ? 1 : 0);
+                            il.Box(typeof(bool));
                             break;
 
-                        case ValueTypeIdx.Int:
-                            il.Ldc_I4(var.Value.AsInt);
-                            il.Call(typeof(Value).GetMethod("FromInt"));
+                        case ValueType.Int:
+                            il.Ldc_I4((int)var.Value);
+                            il.Box(typeof(int));
                             break;
 
-                        case ValueTypeIdx.Float:
-                            il.Ldc_R4(var.Value.AsFloat);
-                            il.Call(typeof(Value).GetMethod("FromFloat"));
+                        case ValueType.Float:
+                            il.Ldc_R4((float)var.Value);
+                            il.Box(typeof(float));
                             break;
 
-                        case ValueTypeIdx.Double:
-                            il.Ldc_R8(var.Value.AsDouble);
-                            il.Call(typeof(Value).GetMethod("FromDouble"));
+                        case ValueType.Double:
+                            il.Ldc_R8((double)var.Value);
+                            il.Box(typeof(double));
+                            break;
+
+                        case ValueType.String:
+                            il.Ldstr((string)var.Value);
                             break;
 
                         default:
                             throw new Exception("case missing (value)");
                     }
+
                     break;
 
                 case VariableExpr var:
@@ -325,29 +316,28 @@ namespace GameKit.Scripting.Internal
                             {
                                 var prop = globals.Properties[var.Name];
                                 il.Ldfld(prop);
+                                if (prop.FieldType.IsValueType)
+                                {
+                                    il.Box(prop.FieldType);
+                                }
 
-                                if (prop.FieldType == typeof(Entity))
-                                {
-                                    il.Call(typeof(Value).GetMethod("FromEntity"));
-                                }
-                                else if (prop.FieldType == typeof(int))
-                                {
-                                    il.Call(typeof(Value).GetMethod("FromInt"));
-                                }
-                                else
-                                {
-                                    throw new Exception("case missing");
-                                }
+                                // if (prop.FieldType == typeof(Entity))
+                                // {
+                                //     il.Call(typeof(Value).GetMethod("FromEntity"));
+                                // }
+                                // else if (prop.FieldType == typeof(int))
+                                // {
+                                //     il.Call(typeof(Value).GetMethod("FromInt"));
+                                // }
+                                // else
+                                // {
+                                //     throw new Exception("case missing");
+                                // }
                                 break;
                             }
                         default:
                             throw new Exception("case missing (variable source)");
                     }
-                    break;
-
-                case StringExpr var:
-                    il.Ldstr(var.Content);
-                    il.Call(typeof(Buildin).GetMethod("CreateString"));
                     break;
 
                 case AddExpr var:
