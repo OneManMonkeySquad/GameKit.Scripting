@@ -76,8 +76,6 @@ namespace GameKit.Scripting.Internal
 
         Expression ParseStatement()
         {
-            UnityEngine.Debug.Log("ParseStatement");
-
             if (_lexer.Peek(TokenKind.Property))
                 return ParseProperty();
 
@@ -221,20 +219,14 @@ namespace GameKit.Scripting.Internal
 
         Expression ParseExpression()
         {
-            UnityEngine.Debug.Log("ParseExpression");
-
             if (_lexer.Peek(TokenKind.If))
             {
-                UnityEngine.Debug.Log("ParseExpression If");
-
                 _lexer.Consume();
 
                 // Condition
                 var cond = ParseAnd();
 
                 // True Body
-                UnityEngine.Debug.Log("True Body");
-
                 var statements = ParseBody();
 
                 // Else?
@@ -242,8 +234,6 @@ namespace GameKit.Scripting.Internal
                 if (_lexer.Peek(TokenKind.Else))
                 {
                     _lexer.Consume();
-
-                    UnityEngine.Debug.Log("False Body");
 
                     if (_lexer.Peek(TokenKind.If))
                     {

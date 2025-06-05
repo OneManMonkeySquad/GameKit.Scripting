@@ -401,6 +401,12 @@ namespace GameKit.Scripting.Internal
             }
 
             il.Call(method);
+
+            // Exernal methods may be void
+            if (method.ReturnType == typeof(void))
+            {
+                il.Ldnull();
+            }
         }
     }
 }
