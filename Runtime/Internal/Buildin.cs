@@ -19,6 +19,7 @@ namespace GameKit.Scripting.Internal
                 double d => d.ToString(),
                 Entity e => e.ToString(),
                 string s => s,
+                null => "null",
                 _ => throw new Exception("Todo ToString"),
             };
 
@@ -53,6 +54,7 @@ namespace GameKit.Scripting.Internal
                 (float l, float r) => l + r,
                 (float l, double r) => l + r,
                 (double l, float r) => l + r,
+                (double l, int r) => l + r,
                 (string l, string r) => l + r,
                 (string l, Entity r) => l + r,
                 _ => throw new Exception("Unexpected types for Add " + (left.GetType(), right.GetType())),
@@ -74,6 +76,7 @@ namespace GameKit.Scripting.Internal
         {
             return (left, right) switch
             {
+                (null, null) => true,
                 (int l, int r) => l == r,
                 (Entity l, Entity r) => l == r,
                 _ => throw new Exception("Unexpected types for CmpEq " + (left.GetType(), right.GetType())),
@@ -84,6 +87,7 @@ namespace GameKit.Scripting.Internal
         {
             return (left, right) switch
             {
+                (null, null) => false,
                 (int l, int r) => l != r,
                 (Entity l, Entity r) => l != r,
                 _ => throw new Exception("Unexpected types for CmpEq " + (left.GetType(), right.GetType())),

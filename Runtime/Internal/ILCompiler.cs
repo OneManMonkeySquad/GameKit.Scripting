@@ -89,20 +89,46 @@ namespace GameKit.Scripting.Internal
             foreach (var func in ast.Functions)
             {
                 var method = myType.GetMethod(func.Name);
-                Delegate d;
+
+                Delegate d = null;
+
 
                 if (method.GetParameters().Length == 0)
                 {
-                    d = method.CreateDelegate(typeof(Action), null);
+                    if (func.HasReturnValue)
+                    {
+                        d = method.CreateDelegate(typeof(Func<object>), null);
+                    }
+                    else
+                    {
+                        d = method.CreateDelegate(typeof(Action), null);
+                    }
                 }
                 else if (method.GetParameters().Length == 1)
                 {
-                    d = method.CreateDelegate(typeof(Action<object>), null);
+                    if (func.HasReturnValue)
+                    {
+                        d = method.CreateDelegate(typeof(Func<object, object>), null);
+                    }
+                    else
+                    {
+                        d = method.CreateDelegate(typeof(Action<object>), null);
+                    }
                 }
-                else
+                else if (method.GetParameters().Length == 2)
                 {
-                    throw new Exception("todo");
+                    if (func.HasReturnValue)
+                    {
+                        d = method.CreateDelegate(typeof(Func<object, object, object>), null);
+                    }
+                    else
+                    {
+                        d = method.CreateDelegate(typeof(Action<object, object>), null);
+                    }
                 }
+
+                if (d == null)
+                    throw new Exception("todo");
 
                 methods2.Add(func.Name, d);
             }
@@ -394,18 +420,18 @@ namespace GameKit.Scripting.Internal
             if (!globals.Methods.TryGetValue(call.Name, out MethodInfo method))
                 throw new Exception($"Function '{call.Name}' not found (at {call.SourceLocation})");
 
-            var parameters = method.GetParameters();
+            // var parameters = method.GetParameters();
 
             for (int i = 0; i < call.Arguments.Count; i++)
             {
                 var arg = call.Arguments[i];
                 VisitExpression(arg, il, globals, localVars);
 
-                var param = parameters[i];
-                if (param.GetType() != typeof(object))
-                {
-                    // #todo
-                }
+                // var param = parameters[i];
+                // if (param.GetType() != typeof(object))
+                // {
+                //     // #todo
+                // }
             }
 
             il.Call(method);

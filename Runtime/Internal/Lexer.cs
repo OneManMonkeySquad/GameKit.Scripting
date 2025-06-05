@@ -329,7 +329,8 @@ namespace GameKit.Scripting.Internal
                         || tk.Kind == TokenKind.Boolean
                         || tk.Kind == TokenKind.Integer
                         || tk.Kind == TokenKind.Float
-                        || tk.Kind == TokenKind.Double)
+                        || tk.Kind == TokenKind.Double
+                        || tk.Kind == TokenKind.String)
                     {
                         tokens.Insert(i + 1, new Token { Kind = TokenKind.Semicolon, SourceLocation = tk.SourceLocation });
                         ++i; // Skip the new token
