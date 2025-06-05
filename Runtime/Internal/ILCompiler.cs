@@ -196,38 +196,15 @@ namespace GameKit.Scripting.Internal
                     }
                     break;
 
-                case LocalVariableDecl variableDecl:
-                    VisitExpression(variableDecl.Value, il, globals, localVars);
-                    il.Dup(); // Make sure the expression value remains after store
-                    var local2 = il.DeclareLocal(typeof(object));
-                    localVars.Add(variableDecl.VariableName, local2);
-                    il.Stloc(local2);
+                case LocalVariableDecl:
+                    VisitExpression(stmt, il, globals, localVars);
                     break;
 
-                case If ifStmt:
-                    VisitExpression(ifStmt.Condition, il, globals, localVars);
-                    il.Call(typeof(Buildin).GetMethod("ConvertValueToBool"));
-
-                    var conditionWasTrue = il.DefineLabel("if_end");
-                    var conditionWasFalse = il.DefineLabel("if_false");
-
-                    il.Brfalse(conditionWasFalse);
-                    VisitStatements(ifStmt.TrueStatements, il, globals, localVars);
-                    il.Br(conditionWasTrue);
-
-                    il.MarkLabel(conditionWasFalse);
-                    if (ifStmt.FalseStatements != null)
-                    {
-                        VisitStatements(ifStmt.FalseStatements, il, globals, localVars);
-                    }
-                    else
-                    {
-                        il.Ldnull();
-                    }
-                    il.MarkLabel(conditionWasTrue);
+                case If:
+                    VisitExpression(stmt, il, globals, localVars);
                     break;
 
-                case ValueExpr var:
+                case ValueExpr:
                     VisitExpression(stmt, il, globals, localVars);
                     // #todo result?
                     break;
@@ -371,41 +348,24 @@ namespace GameKit.Scripting.Internal
                 case If ifStmt:
                     VisitExpression(ifStmt.Condition, il, globals, localVars);
                     il.Call(typeof(Buildin).GetMethod("ConvertValueToBool"));
+
+                    var conditionWasTrue = il.DefineLabel("if_end");
+                    var conditionWasFalse = il.DefineLabel("if_false");
+
+                    il.Brfalse(conditionWasFalse);
+                    VisitStatements(ifStmt.TrueStatements, il, globals, localVars);
+                    il.Br(conditionWasTrue);
+
+                    il.MarkLabel(conditionWasFalse);
                     if (ifStmt.FalseStatements != null)
                     {
-                        var conditionWasTrue = il.DefineLabel("if_end");
-                        var conditionWasFalse = il.DefineLabel("if_false");
-
-                        il.Brfalse(conditionWasFalse);
-                        foreach (var stmt2 in ifStmt.TrueStatements)
-                        {
-                            VisitStatement(stmt2, il, globals, localVars);
-                            il.Nop();
-                        }
-                        il.Br(conditionWasTrue);
-
-                        il.MarkLabel(conditionWasFalse);
-                        foreach (var stmt2 in ifStmt.FalseStatements)
-                        {
-                            VisitStatement(stmt2, il, globals, localVars);
-                            il.Nop();
-                        }
-
-                        il.MarkLabel(conditionWasTrue);
+                        VisitStatements(ifStmt.FalseStatements, il, globals, localVars);
                     }
                     else
                     {
-                        var conditionWasFalse = il.DefineLabel("if_false");
-
-                        il.Brfalse(conditionWasFalse);
-                        foreach (var stmt2 in ifStmt.TrueStatements)
-                        {
-                            VisitStatement(stmt2, il, globals, localVars);
-                            il.Nop();
-                        }
-
-                        il.MarkLabel(conditionWasFalse);
+                        il.Ldnull();
                     }
+                    il.MarkLabel(conditionWasTrue);
                     break;
 
                 case LocalVariableDecl variableDecl:

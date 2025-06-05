@@ -172,16 +172,38 @@ public class TestBaseLanguage
     }
 
     [Test]
-    public void TestAssignIfAsExpression()
+    public void TestAssignTrueIfAsExpression()
     {
         Assert.AreEqual("42", Script.Execute("x := if 2 > 1 {\n"
-            + "42\n"
-            + "}\n"
-            + "else {\n"
-            + "11\n"
+            + "    42\n"
             + "};\n"
             + "print(x)"));
+    }
 
+    [Test]
+    public void TestAssignFalseIfAsExpression()
+    {
+        Assert.AreEqual("null", Script.Execute("x := if 1 > 2 {\n"
+            + "    42\n"
+            + "};\n"
+            + "print(x)"));
+    }
+
+    [Test]
+    public void TestAssignIfElseAsExpression()
+    {
+        Assert.AreEqual("42", Script.Execute("x := if 2 > 1 {\n"
+            + "    42\n"
+            + "}\n"
+            + "else {\n"
+            + "    11\n"
+            + "};\n"
+            + "print(x)"));
+    }
+
+    [Test]
+    public void TestAssignIfElseAsExpressionShort()
+    {
         Assert.AreEqual("42", Script.Execute("x := if 2 > 1 { 42; } else { 11; };\n"
             + "print(x)"));
     }
