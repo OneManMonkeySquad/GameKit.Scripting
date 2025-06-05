@@ -36,7 +36,6 @@ namespace GameKit.Scripting.Internal
         Star, // *
         CmpAnd, // &&
 
-        Return,
         Function, // func
         Property, // prop
         If,
@@ -84,7 +83,6 @@ namespace GameKit.Scripting.Internal
             TokenKind.CmpNEq => "!=",
             TokenKind.CmpAnd => "&&",
             TokenKind.Star => "*",
-            TokenKind.Return => "return",
             TokenKind.Function => "func",
             TokenKind.Property => "prop",
             TokenKind.If => "if",
@@ -261,11 +259,7 @@ namespace GameKit.Scripting.Internal
             if (content.Length == 0)
                 return;
 
-            if (content == "return")
-            {
-                tokens.Add(new Token { Kind = TokenKind.Return, SourceLocation = sourceLoc });
-            }
-            else if (content == "if")
+            if (content == "if")
             {
                 tokens.Add(new Token { Kind = TokenKind.If, SourceLocation = sourceLoc });
             }
@@ -323,7 +317,6 @@ namespace GameKit.Scripting.Internal
                 if (isLastTokenInLine)
                 {
                     if (tk.Kind == TokenKind.ParenClose
-                        || tk.Kind == TokenKind.Return
                         || tk.Kind == TokenKind.NonTerminal
                         || tk.Kind == TokenKind.Null
                         || tk.Kind == TokenKind.Boolean
@@ -346,11 +339,11 @@ namespace GameKit.Scripting.Internal
             return tk;
         }
 
-        public Token Accept(TokenKind kind)
+        public Token Accept(TokenKind kind, string what = null)
         {
             var tk = _tokens[_currentTokenIdx];
             if (tk.Kind != kind)
-                throw new System.Exception($"Expected {Token.TokenTypeToString(kind)} got {tk} (at {tk.SourceLocation})");
+                throw new System.Exception($"Expected {Token.TokenTypeToString(kind)} {(what != null ? $"({what})" : "")} got {tk} (at {tk.SourceLocation})");
 
             ++_currentTokenIdx;
             return tk;

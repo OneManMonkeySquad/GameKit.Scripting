@@ -9,7 +9,7 @@ namespace GameKit.Scripting.Internal
     public static class Buildin
     {
         [Scriptable("print")]
-        public static void Print(object val)
+        public static object Print(object val)
         {
             var str = val switch
             {
@@ -28,6 +28,8 @@ namespace GameKit.Scripting.Internal
             {
                 ILCompiler.Output += str;
             }
+
+            return str;
         }
 
         public static bool ConvertValueToBool(object val)
@@ -51,10 +53,12 @@ namespace GameKit.Scripting.Internal
             return (left, right) switch
             {
                 (int l, int r) => l + r,
+                (int l, string r) => l + r,
                 (float l, float r) => l + r,
                 (float l, double r) => l + r,
                 (double l, float r) => l + r,
                 (double l, int r) => l + r,
+                (string l, int r) => l + r,
                 (string l, string r) => l + r,
                 (string l, Entity r) => l + r,
                 _ => throw new Exception("Unexpected types for Add " + (left.GetType(), right.GetType())),

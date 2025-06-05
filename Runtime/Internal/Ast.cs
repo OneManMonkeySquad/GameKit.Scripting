@@ -13,7 +13,6 @@ namespace GameKit.Scripting.Internal
         void If(If @if) { }
         void LocalVariableDecl(LocalVariableDecl localVariableDecl) { }
         void Assignment(Assignment assignment) { }
-        void Return(Return ret) { }
         void PropertyDecl(PropertyDecl propertyDecl) { }
         void FunctionDecl(FunctionDecl functionDecl) { }
         void ValueExpr(ValueExpr valueExpr) { }
@@ -81,8 +80,8 @@ namespace GameKit.Scripting.Internal
     public class If : Statement
     {
         public Expression Condition;
-        public List<Statement> TrueStatements;
-        public List<Statement> FalseStatements;
+        public List<Expression> TrueStatements;
+        public List<Expression> FalseStatements;
 
         public override void Visit(IVisitStatements visitor)
         {
@@ -161,35 +160,6 @@ namespace GameKit.Scripting.Internal
             return str;
         }
     }
-
-    public class Return : Statement
-    {
-        /// <summary>
-        /// May be null!
-        /// </summary>
-        public Expression Value;
-
-        public override void Visit(IVisitStatements visitor)
-        {
-            Value?.Visit(visitor);
-            visitor.Return(this);
-        }
-
-        public override string ToString(string padding)
-        {
-            if (Value != null)
-            {
-                var str = padding + $"[Return] <{ResultType}>\n";
-                str += Value.ToString(padding + "\t");
-                return str;
-            }
-            else
-            {
-                return padding + $"[Return]";
-            }
-        }
-    }
-
     public class PropertyDecl : Statement
     {
         public string Name;
@@ -206,9 +176,8 @@ namespace GameKit.Scripting.Internal
     public class FunctionDecl : Statement
     {
         public string Name;
-        public List<Statement> Statements;
+        public List<Expression> Statements;
         public List<string> ParameterNames;
-        public bool HasReturnValue;
 
         public override void Visit(IVisitStatements visitor)
         {
@@ -225,7 +194,7 @@ namespace GameKit.Scripting.Internal
 
         public override string ToString()
         {
-            return $"{Name}({string.Join(',', ParameterNames)}) {(HasReturnValue ? "@HasReturnValue" : "")}";
+            return $"{Name}({string.Join(',', ParameterNames)})";
         }
 
         public override string ToString(string padding)

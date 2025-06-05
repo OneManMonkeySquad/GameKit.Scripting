@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using GameKit.Scripting.Runtime;
 
 namespace GameKit.Scripting.Internal
 {
@@ -20,7 +19,7 @@ namespace GameKit.Scripting.Internal
             var functions = new List<FunctionDecl>();
             var properties = new List<PropertyDecl>();
 
-            var statements = new List<Statement>();
+            var statements = new List<Expression>();
             while (!_lexer.EndOfFile())
             {
                 var stmt = ParseStatement();
@@ -75,13 +74,12 @@ namespace GameKit.Scripting.Internal
             return ast;
         }
 
-        Statement ParseStatement()
+        Expression ParseStatement()
         {
+            UnityEngine.Debug.Log("ParseStatement");
+
             if (_lexer.Peek(TokenKind.Property))
                 return ParseProperty();
-
-            if (_lexer.Peek(TokenKind.Return))
-                return ParseReturn();
 
             if (_lexer.Peek(TokenKind.If))
                 return ParseIfStatement();
@@ -89,12 +87,20 @@ namespace GameKit.Scripting.Internal
             if (_lexer.Peek(TokenKind.Function))
                 return ParseFunction();
 
-            var name = _lexer.Accept(TokenKind.NonTerminal);
+            if (_lexer.Peek(TokenKind.Integer) || _lexer.Peek(TokenKind.String) || _lexer.Peek(TokenKind.Float))
+            {
+                var value = ParseExpression();
+                _lexer.Accept(TokenKind.Semicolon);
+                return value;
+            }
+
+            //
+            var name = _lexer.Accept(TokenKind.NonTerminal, "Identifier");
 
             // Assignment?
             if (_lexer.Peek(TokenKind.Equal))
             {
-                _lexer.Accept(TokenKind.Equal);
+                _lexer.Consume();
                 var value = ParseExpression();
                 _lexer.Accept(TokenKind.Semicolon);
                 return new Assignment { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
@@ -103,7 +109,7 @@ namespace GameKit.Scripting.Internal
             // Variable declaration?
             if (_lexer.Peek(TokenKind.DeclareVariable))
             {
-                _lexer.Accept(TokenKind.DeclareVariable);
+                _lexer.Consume();
                 var value = ParseExpression();
                 _lexer.Accept(TokenKind.Semicolon);
                 return new LocalVariableDecl { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
@@ -111,7 +117,7 @@ namespace GameKit.Scripting.Internal
 
             // Call
             if (!_lexer.Peek(TokenKind.ParenOpen))
-                _lexer.ThrowError($"Expected on of := = ( after {name}");
+                _lexer.ThrowError($"Unknown statement");
 
             var arguments = ParseArguments();
 
@@ -123,27 +129,11 @@ namespace GameKit.Scripting.Internal
         Statement ParseProperty()
         {
             var tk = _lexer.Accept(TokenKind.Property);
-            var name = _lexer.Accept(TokenKind.NonTerminal);
+            var name = _lexer.Accept(TokenKind.NonTerminal, "Property Name");
             _lexer.Accept(TokenKind.Colon);
-            var type = _lexer.Accept(TokenKind.NonTerminal);
+            var type = _lexer.Accept(TokenKind.NonTerminal, "Property Type");
             _lexer.Accept(TokenKind.Semicolon);
             return new PropertyDecl { Name = name.Content, DeclaredTypeName = type.Content, SourceLocation = tk.SourceLocation };
-        }
-
-        Statement ParseReturn()
-        {
-            var tk = _lexer.Accept(TokenKind.Return);
-            if (!_lexer.Peek(TokenKind.Semicolon))
-            {
-                var value = ParseExpression();
-                _lexer.Accept(TokenKind.Semicolon);
-
-                return new Return { Value = value, SourceLocation = value.SourceLocation };
-            }
-
-            _lexer.Accept(TokenKind.Semicolon);
-
-            return new Return { SourceLocation = tk.SourceLocation };
         }
 
         Statement ParseIfStatement()
@@ -157,14 +147,14 @@ namespace GameKit.Scripting.Internal
             var statements = ParseBody();
 
             // Else?
-            List<Statement> falseStatements = null;
+            List<Expression> falseStatements = null;
             if (_lexer.Peek(TokenKind.Else))
             {
-                _lexer.Accept(TokenKind.Else);
+                _lexer.Consume();
 
                 if (_lexer.Peek(TokenKind.If))
                 {
-                    falseStatements = new List<Statement>{
+                    falseStatements = new List<Expression>{
                         ParseIfStatement()
                     };
                 }
@@ -201,11 +191,11 @@ namespace GameKit.Scripting.Internal
             };
         }
 
-        List<Statement> ParseBody()
+        List<Expression> ParseBody()
         {
-            var tk = _lexer.Accept(TokenKind.BraceOpen);
+            _lexer.Accept(TokenKind.BraceOpen);
 
-            var statements = new List<Statement>();
+            var statements = new List<Expression>();
             while (!_lexer.Peek(TokenKind.BraceClose))
             {
                 var firstTk = _lexer.Peek();
@@ -231,6 +221,51 @@ namespace GameKit.Scripting.Internal
 
         Expression ParseExpression()
         {
+            UnityEngine.Debug.Log("ParseExpression");
+
+            if (_lexer.Peek(TokenKind.If))
+            {
+                UnityEngine.Debug.Log("ParseExpression If");
+
+                _lexer.Consume();
+
+                // Condition
+                var cond = ParseAnd();
+
+                // True Body
+                UnityEngine.Debug.Log("True Body");
+
+                var statements = ParseBody();
+
+                // Else?
+                List<Expression> falseStatements = null;
+                if (_lexer.Peek(TokenKind.Else))
+                {
+                    _lexer.Consume();
+
+                    UnityEngine.Debug.Log("False Body");
+
+                    if (_lexer.Peek(TokenKind.If))
+                    {
+                        falseStatements = new List<Expression>{
+                            ParseIfStatement()
+                        };
+                    }
+                    else
+                    {
+                        falseStatements = ParseBody();
+                    }
+                }
+
+                return new If
+                {
+                    Condition = cond,
+                    TrueStatements = statements,
+                    FalseStatements = falseStatements,
+                    SourceLocation = cond.SourceLocation
+                };
+            }
+
             return ParseAnd();
         }
 
@@ -399,6 +434,22 @@ namespace GameKit.Scripting.Internal
             else
             {
                 var name = _lexer.Accept(TokenKind.NonTerminal);
+
+                // Assignment?
+                if (_lexer.Peek(TokenKind.Equal))
+                {
+                    _lexer.Consume();
+                    var value = ParseExpression();
+                    return new Assignment { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
+                }
+
+                // Variable declaration?
+                if (_lexer.Peek(TokenKind.DeclareVariable))
+                {
+                    _lexer.Consume();
+                    var value = ParseExpression();
+                    return new LocalVariableDecl { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
+                }
 
                 // Call?
                 if (_lexer.Peek(TokenKind.ParenOpen))

@@ -39,20 +39,6 @@ namespace GameKit.Scripting.Internal
         }
     }
 
-    class HasReturnValueVisitor : IVisitStatements
-    {
-        public bool HasReturnValue = false;
-
-        public void Return(Return ret)
-        {
-            if (ret.Value != null)
-            {
-                HasReturnValue = true;
-            }
-        }
-    }
-
-
     class ResolveVariablesVisitor : IVisitStatements
     {
         Scope currentScope = null;
@@ -176,19 +162,6 @@ namespace GameKit.Scripting.Internal
             propertyDecl.ResultType = ScriptingTypeCache.ByName(propertyDecl.DeclaredTypeName);
         }
 
-        public void Return(Return ret)
-        {
-            if (ret.Value != null)
-            {
-                Assert.IsTrue(ret.Value.ResultType != null);
-                ret.ResultType = ret.Value.ResultType;
-            }
-            else
-            {
-                ret.ResultType = typeof(void);
-            }
-        }
-
         public void ValueExpr(ValueExpr valueExpr)
         {
             switch (valueExpr.ValueType)
@@ -246,14 +219,6 @@ namespace GameKit.Scripting.Internal
     {
         public void Analyse(Ast ast)
         {
-            foreach (var func in ast.Functions)
-            {
-                var visitor = new HasReturnValueVisitor();
-                func.Visit(visitor);
-                func.HasReturnValue = visitor.HasReturnValue;
-                // #todo ensure all branches return a value
-            }
-
             var resolveVariables = new ResolveVariablesVisitor();
             ast.Visit(resolveVariables);
 

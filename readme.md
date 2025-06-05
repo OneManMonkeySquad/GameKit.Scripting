@@ -31,6 +31,7 @@ Add *AttachedScriptAuthoring* component to an authoring GameObject inside a subs
 - Have a special syntax to send messages to other objects
 - Build/bake time code execution
 
-## Credits
+## Inspired by
 https://craftinginterpreters.com
 https://media.gdcvault.com/gdc2017/Presentations/Reed_Dan_NetworkingScriptedWeapons.pdf
+https://skookumscript.com

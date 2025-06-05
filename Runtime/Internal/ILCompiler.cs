@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using GameKit.Scripting.Runtime;
 using GrEmit;
 using NUnit.Framework;
-using Unity.Entities;
 using UnityEditor;
 using UnityEngine;
 
@@ -61,12 +59,7 @@ namespace GameKit.Scripting.Internal
                     parameters[i] = typeof(object);
                 }
 
-                Type resultType = null;
-                if (func.HasReturnValue)
-                {
-                    resultType = typeof(object);
-                }
-
+                Type resultType = typeof(object);
                 var mb = typeBuilder.DefineMethod(func.Name, MethodAttributes.Public | MethodAttributes.Static, resultType, parameters);
                 methods[func.Name] = mb;
             }
@@ -91,40 +84,17 @@ namespace GameKit.Scripting.Internal
                 var method = myType.GetMethod(func.Name);
 
                 Delegate d = null;
-
-
                 if (method.GetParameters().Length == 0)
                 {
-                    if (func.HasReturnValue)
-                    {
-                        d = method.CreateDelegate(typeof(Func<object>), null);
-                    }
-                    else
-                    {
-                        d = method.CreateDelegate(typeof(Action), null);
-                    }
+                    d = method.CreateDelegate(typeof(Func<object>), null);
                 }
                 else if (method.GetParameters().Length == 1)
                 {
-                    if (func.HasReturnValue)
-                    {
-                        d = method.CreateDelegate(typeof(Func<object, object>), null);
-                    }
-                    else
-                    {
-                        d = method.CreateDelegate(typeof(Action<object>), null);
-                    }
+                    d = method.CreateDelegate(typeof(Func<object, object>), null);
                 }
                 else if (method.GetParameters().Length == 2)
                 {
-                    if (func.HasReturnValue)
-                    {
-                        d = method.CreateDelegate(typeof(Func<object, object, object>), null);
-                    }
-                    else
-                    {
-                        d = method.CreateDelegate(typeof(Action<object, object>), null);
-                    }
+                    d = method.CreateDelegate(typeof(Func<object, object, object>), null);
                 }
 
                 if (d == null)
@@ -168,21 +138,27 @@ namespace GameKit.Scripting.Internal
             var localVars = new Dictionary<string, GroboIL.Local>();
             using (var il = new GroboIL(method))
             {
-                foreach (var stmt in func.Statements)
-                {
-                    VisitStatement(stmt, il, globals, localVars);
-                }
-
-                if (!func.HasReturnValue)
-                {
-                    il.Ret();
-                }
+                VisitStatements(func.Statements, il, globals, localVars);
+                il.Ret();
 
                 File.AppendAllText("E:\\il.txt", il.GetILCode() + "\n");
             }
         }
 
-        void VisitStatement(Statement stmt, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
+        void VisitStatements(List<Expression> stmts, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
+        {
+            for (int i = 0; i < stmts.Count; i++)
+            {
+                Expression stmt = stmts[i];
+                VisitStatement(stmt, il, globals, localVars);
+                if (i != stmts.Count - 1)
+                {
+                    il.Pop();
+                }
+            }
+        }
+
+        void VisitStatement(Expression stmt, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
         {
             Assert.IsNotNull(stmt);
 
@@ -197,6 +173,7 @@ namespace GameKit.Scripting.Internal
 
                 case Assignment assignment:
                     VisitExpression(assignment.Value, il, globals, localVars);
+                    il.Dup(); // Make sure the expression value remains after store
                     switch (assignment.ScopeInfo.Source)
                     {
                         case VariableSource.Local:
@@ -221,6 +198,7 @@ namespace GameKit.Scripting.Internal
 
                 case LocalVariableDecl variableDecl:
                     VisitExpression(variableDecl.Value, il, globals, localVars);
+                    il.Dup(); // Make sure the expression value remains after store
                     var local2 = il.DeclareLocal(typeof(object));
                     localVars.Add(variableDecl.VariableName, local2);
                     il.Stloc(local2);
@@ -229,53 +207,33 @@ namespace GameKit.Scripting.Internal
                 case If ifStmt:
                     VisitExpression(ifStmt.Condition, il, globals, localVars);
                     il.Call(typeof(Buildin).GetMethod("ConvertValueToBool"));
+
+                    var conditionWasTrue = il.DefineLabel("if_end");
+                    var conditionWasFalse = il.DefineLabel("if_false");
+
+                    il.Brfalse(conditionWasFalse);
+                    VisitStatements(ifStmt.TrueStatements, il, globals, localVars);
+                    il.Br(conditionWasTrue);
+
+                    il.MarkLabel(conditionWasFalse);
                     if (ifStmt.FalseStatements != null)
                     {
-                        var conditionWasTrue = il.DefineLabel("if_end");
-                        var conditionWasFalse = il.DefineLabel("if_false");
-
-                        il.Brfalse(conditionWasFalse);
-                        foreach (var stmt2 in ifStmt.TrueStatements)
-                        {
-                            VisitStatement(stmt2, il, globals, localVars);
-                            il.Nop();
-                        }
-                        il.Br(conditionWasTrue);
-
-                        il.MarkLabel(conditionWasFalse);
-                        foreach (var stmt2 in ifStmt.FalseStatements)
-                        {
-                            VisitStatement(stmt2, il, globals, localVars);
-                            il.Nop();
-                        }
-
-                        il.MarkLabel(conditionWasTrue);
+                        VisitStatements(ifStmt.FalseStatements, il, globals, localVars);
                     }
                     else
                     {
-                        var conditionWasFalse = il.DefineLabel("if_false");
-
-                        il.Brfalse(conditionWasFalse);
-                        foreach (var stmt2 in ifStmt.TrueStatements)
-                        {
-                            VisitStatement(stmt2, il, globals, localVars);
-                            il.Nop();
-                        }
-
-                        il.MarkLabel(conditionWasFalse);
+                        il.Ldnull();
                     }
+                    il.MarkLabel(conditionWasTrue);
                     break;
 
-                case Return ret:
-                    if (ret.Value != null)
-                    {
-                        VisitExpression(ret.Value, il, globals, localVars);
-                    }
-                    il.Ret();
+                case ValueExpr var:
+                    VisitExpression(stmt, il, globals, localVars);
+                    // #todo result?
                     break;
 
                 default:
-                    throw new Exception("missing case");
+                    throw new Exception("missing case " + stmt);
             }
         }
 
@@ -410,8 +368,56 @@ namespace GameKit.Scripting.Internal
                     VisitExpression(group.Value, il, globals, localVars);
                     break;
 
+                case If ifStmt:
+                    VisitExpression(ifStmt.Condition, il, globals, localVars);
+                    il.Call(typeof(Buildin).GetMethod("ConvertValueToBool"));
+                    if (ifStmt.FalseStatements != null)
+                    {
+                        var conditionWasTrue = il.DefineLabel("if_end");
+                        var conditionWasFalse = il.DefineLabel("if_false");
+
+                        il.Brfalse(conditionWasFalse);
+                        foreach (var stmt2 in ifStmt.TrueStatements)
+                        {
+                            VisitStatement(stmt2, il, globals, localVars);
+                            il.Nop();
+                        }
+                        il.Br(conditionWasTrue);
+
+                        il.MarkLabel(conditionWasFalse);
+                        foreach (var stmt2 in ifStmt.FalseStatements)
+                        {
+                            VisitStatement(stmt2, il, globals, localVars);
+                            il.Nop();
+                        }
+
+                        il.MarkLabel(conditionWasTrue);
+                    }
+                    else
+                    {
+                        var conditionWasFalse = il.DefineLabel("if_false");
+
+                        il.Brfalse(conditionWasFalse);
+                        foreach (var stmt2 in ifStmt.TrueStatements)
+                        {
+                            VisitStatement(stmt2, il, globals, localVars);
+                            il.Nop();
+                        }
+
+                        il.MarkLabel(conditionWasFalse);
+                    }
+                    break;
+
+                case LocalVariableDecl variableDecl:
+                    VisitExpression(variableDecl.Value, il, globals, localVars);
+                    il.Dup(); // Make sure the expression value remains after store
+                    var local2 = il.DeclareLocal(typeof(object));
+                    localVars.Add(variableDecl.VariableName, local2);
+                    il.Stloc(local2);
+                    break;
+
                 default:
-                    throw new Exception("Missing case");
+                    throw new Exception("Missing case " + expr);
             }
         }
 

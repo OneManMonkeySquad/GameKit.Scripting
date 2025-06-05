@@ -32,28 +32,6 @@ public class TestBaseLanguage
     }
 
     [Test]
-    public void TestFuncReturn()
-    {
-        Assert.AreEqual("Hello World", Script.Execute(
-              "func derp() {\n"
-            + "  return \"Hello World\"\n"
-            + "}\n"
-            + "x := derp()\n"
-            + "print(x)"));
-    }
-
-    [Test]
-    public void TestFuncReturnEarly()
-    {
-        Assert.AreEqual("", Script.Execute(
-              "func derp() {\n"
-            + "  return\n"
-            + "  print(42)\n"
-            + "}\n"
-            + "derp();"));
-    }
-
-    [Test]
     public void TestFuncArgument()
     {
         Assert.AreEqual("Hello World", Script.Execute(
@@ -188,6 +166,27 @@ public class TestBaseLanguage
     }
 
     [Test]
+    public void TestIfAsExpression()
+    {
+        Assert.AreEqual("42", Script.Execute("print(if 2 > 1 { 42; } else { 11; })"));
+    }
+
+    [Test]
+    public void TestAssignIfAsExpression()
+    {
+        Assert.AreEqual("42", Script.Execute("x := if 2 > 1 {\n"
+            + "42\n"
+            + "}\n"
+            + "else {\n"
+            + "11\n"
+            + "};\n"
+            + "print(x)"));
+
+        Assert.AreEqual("42", Script.Execute("x := if 2 > 1 { 42; } else { 11; };\n"
+            + "print(x)"));
+    }
+
+    [Test]
     public void TestAnd()
     {
         Assert.AreEqual("42", Script.Execute("if true && true { print(42); }"));
@@ -234,5 +233,13 @@ public class TestBaseLanguage
     public void TestGrouping()
     {
         Assert.AreEqual("42", Script.Execute("print((5 + 5) * 4 + 2); "));
+    }
+
+    [Test]
+    public void TestDeclareMultipleVariables()
+    {
+        Assert.AreEqual("1 1", Script.Execute(
+              "x := y := 1\n"
+            + "print(x + \" \" + y)"));
     }
 }
