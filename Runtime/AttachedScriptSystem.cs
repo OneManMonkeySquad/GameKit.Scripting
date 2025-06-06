@@ -1,4 +1,3 @@
-using GameKit.Scripting.Internal;
 using Unity.Entities;
 
 namespace GameKit.Scripting.Runtime
@@ -37,30 +36,16 @@ namespace GameKit.Scripting.Runtime
                     }
                     else
                     {
-                        switch (prop.Value.Type)
+                        value = prop.Value.Type switch
                         {
-                            case ValueTypeIdx.Null:
-                                value = null;
-                                break;
-                            case ValueTypeIdx.Bool:
-                                value = prop.Value.AsBool;
-                                break;
-                            case ValueTypeIdx.Int:
-                                value = prop.Value.AsInt;
-                                break;
-                            case ValueTypeIdx.Float:
-                                value = prop.Value.AsFloat;
-                                break;
-                            case ValueTypeIdx.Double:
-                                value = prop.Value.AsDouble;
-                                break;
-                            case ValueTypeIdx.Entity:
-                                value = prop.Value.AsEntity;
-                                break;
-
-                            default:
-                                throw new System.Exception("missing case");
-                        }
+                            ValueTypeIdx.Null => null,
+                            ValueTypeIdx.Bool => prop.Value.AsBool,
+                            ValueTypeIdx.Int => prop.Value.AsInt,
+                            ValueTypeIdx.Float => prop.Value.AsFloat,
+                            ValueTypeIdx.Double => prop.Value.AsDouble,
+                            ValueTypeIdx.Entity => prop.Value.AsEntity,
+                            _ => throw new System.Exception("missing case"),
+                        };
                     }
 
                     compiledScript.SetProperty(prop.Name.ToString(), value);

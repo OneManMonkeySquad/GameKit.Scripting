@@ -376,6 +376,11 @@ namespace GameKit.Scripting.Internal
                     il.Stloc(local2);
                     break;
 
+                case ObjectRefExpr objectRef:
+                    il.Ldstr(objectRef.Name);
+                    il.Call(typeof(Buildin).GetMethod("ResolveObjectRef"));
+                    break;
+
                 default:
                     throw new Exception("Missing case " + expr);
             }

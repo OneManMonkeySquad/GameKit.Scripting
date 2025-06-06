@@ -101,7 +101,7 @@ namespace GameKit.Scripting.Internal
                 _lexer.Consume();
                 var value = ParseExpression();
                 _lexer.Accept(TokenKind.Semicolon);
-                return new Assignment { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
+                return new Assignment { VariableName = name.Content, Value = value, SourceLocation = name.SourceLoc };
             }
 
             // Variable declaration?
@@ -110,7 +110,7 @@ namespace GameKit.Scripting.Internal
                 _lexer.Consume();
                 var value = ParseExpression();
                 _lexer.Accept(TokenKind.Semicolon);
-                return new LocalVariableDecl { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
+                return new LocalVariableDecl { VariableName = name.Content, Value = value, SourceLocation = name.SourceLoc };
             }
 
             // Call
@@ -121,7 +121,7 @@ namespace GameKit.Scripting.Internal
 
             _lexer.Accept(TokenKind.Semicolon);
 
-            return new Call { Name = name.Content, Arguments = arguments, SourceLocation = name.SourceLocation };
+            return new Call { Name = name.Content, Arguments = arguments, SourceLocation = name.SourceLoc };
         }
 
         Statement ParseProperty()
@@ -131,7 +131,7 @@ namespace GameKit.Scripting.Internal
             _lexer.Accept(TokenKind.Colon);
             var type = _lexer.Accept(TokenKind.NonTerminal, "Property Type");
             _lexer.Accept(TokenKind.Semicolon);
-            return new PropertyDecl { Name = name.Content, DeclaredTypeName = type.Content, SourceLocation = tk.SourceLocation };
+            return new PropertyDecl { Name = name.Content, DeclaredTypeName = type.Content, SourceLocation = tk.SourceLoc };
         }
 
         Statement ParseIfStatement()
@@ -185,7 +185,7 @@ namespace GameKit.Scripting.Internal
                 Name = name.Content,
                 Statements = statements,
                 ParameterNames = parameters,
-                SourceLocation = name.SourceLocation
+                SourceLocation = name.SourceLoc
             };
         }
 
@@ -201,11 +201,11 @@ namespace GameKit.Scripting.Internal
                 var stmt = ParseStatement();
                 if (stmt is FunctionDecl)
                 {
-                    _lexer.ThrowError("Local functions are not supported", firstTk.SourceLocation);
+                    _lexer.ThrowError("Local functions are not supported", firstTk.SourceLoc);
                 }
                 else if (stmt is PropertyDecl)
                 {
-                    _lexer.ThrowError("Local properties are not supported", firstTk.SourceLocation);
+                    _lexer.ThrowError("Local properties are not supported", firstTk.SourceLoc);
                 }
                 else
                 {
@@ -370,7 +370,7 @@ namespace GameKit.Scripting.Internal
             {
                 var tk = _lexer.Accept(TokenKind.Minus);
 
-                return new NegateExpr { Value = ParsePrimary(), SourceLocation = tk.SourceLocation };
+                return new NegateExpr { Value = ParsePrimary(), SourceLocation = tk.SourceLoc };
             }
             else
             {
@@ -386,32 +386,32 @@ namespace GameKit.Scripting.Internal
             if (_lexer.Peek(TokenKind.Null))
             {
                 var tk = _lexer.Accept(TokenKind.Null);
-                return new ValueExpr { Value = null, ValueType = ValueType.Null, SourceLocation = tk.SourceLocation };
+                return new ValueExpr { Value = null, ValueType = ValueType.Null, SourceLocation = tk.SourceLoc };
             }
             else if (_lexer.Peek(TokenKind.String))
             {
                 var tk = _lexer.Accept(TokenKind.String);
-                return new ValueExpr { Value = tk.Content, ValueType = ValueType.String, SourceLocation = tk.SourceLocation };
+                return new ValueExpr { Value = tk.Content, ValueType = ValueType.String, SourceLocation = tk.SourceLoc };
             }
             else if (_lexer.Peek(TokenKind.Integer))
             {
                 var tk = _lexer.Accept(TokenKind.Integer);
-                return new ValueExpr { Value = int.Parse(tk.Content), ValueType = ValueType.Int, SourceLocation = tk.SourceLocation };
+                return new ValueExpr { Value = int.Parse(tk.Content), ValueType = ValueType.Int, SourceLocation = tk.SourceLoc };
             }
             else if (_lexer.Peek(TokenKind.Boolean))
             {
                 var tk = _lexer.Accept(TokenKind.Boolean);
-                return new ValueExpr { Value = bool.Parse(tk.Content), ValueType = ValueType.Bool, SourceLocation = tk.SourceLocation };
+                return new ValueExpr { Value = bool.Parse(tk.Content), ValueType = ValueType.Bool, SourceLocation = tk.SourceLoc };
             }
             else if (_lexer.Peek(TokenKind.Float))
             {
                 var tk = _lexer.Accept(TokenKind.Float);
-                return new ValueExpr { Value = float.Parse(tk.Content), ValueType = ValueType.Float, SourceLocation = tk.SourceLocation };
+                return new ValueExpr { Value = float.Parse(tk.Content), ValueType = ValueType.Float, SourceLocation = tk.SourceLoc };
             }
             else if (_lexer.Peek(TokenKind.Double))
             {
                 var tk = _lexer.Accept(TokenKind.Double);
-                return new ValueExpr { Value = double.Parse(tk.Content), ValueType = ValueType.Double, SourceLocation = tk.SourceLocation };
+                return new ValueExpr { Value = double.Parse(tk.Content), ValueType = ValueType.Double, SourceLocation = tk.SourceLoc };
             }
             else if (_lexer.Peek(TokenKind.ParenOpen))
             {
@@ -420,6 +420,12 @@ namespace GameKit.Scripting.Internal
                 _lexer.Accept(TokenKind.ParenClose);
 
                 return new GroupingExpr { Value = expr, SourceLocation = expr.SourceLocation };
+            }
+            else if (_lexer.Peek(TokenKind.At))
+            {
+                _lexer.Consume();
+                var objectNameTk = _lexer.Accept(TokenKind.String);
+                return new ObjectRefExpr { Name = objectNameTk.Content, ResultType = typeof(object), SourceLocation = objectNameTk.SourceLoc };
             }
             else
             {
@@ -430,7 +436,7 @@ namespace GameKit.Scripting.Internal
                 {
                     _lexer.Consume();
                     var value = ParseExpression();
-                    return new Assignment { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
+                    return new Assignment { VariableName = name.Content, Value = value, SourceLocation = name.SourceLoc };
                 }
 
                 // Variable declaration?
@@ -438,18 +444,18 @@ namespace GameKit.Scripting.Internal
                 {
                     _lexer.Consume();
                     var value = ParseExpression();
-                    return new LocalVariableDecl { VariableName = name.Content, Value = value, SourceLocation = name.SourceLocation };
+                    return new LocalVariableDecl { VariableName = name.Content, Value = value, SourceLocation = name.SourceLoc };
                 }
 
                 // Call?
                 if (_lexer.Peek(TokenKind.ParenOpen))
                 {
                     var arguments = ParseArguments();
-                    return new Call { Name = name.Content, Arguments = arguments, SourceLocation = name.SourceLocation };
+                    return new Call { Name = name.Content, Arguments = arguments, SourceLocation = name.SourceLoc };
                 }
                 else
                 {
-                    return new VariableExpr { Name = name.Content, SourceLocation = name.SourceLocation };
+                    return new VariableExpr { Name = name.Content, SourceLocation = name.SourceLoc };
                 }
             }
         }

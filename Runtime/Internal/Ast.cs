@@ -22,6 +22,7 @@ namespace GameKit.Scripting.Internal
         void CmpExpr(CmpExpr cmpExpr) { }
         void MulExpr(MulExpr mulExpr) { }
         void AddExpr(AddExpr addExpr) { }
+        void ObjectRef(ObjectRefExpr objectRefExpr) { }
     }
 
     public struct SourceLocation
@@ -339,6 +340,21 @@ namespace GameKit.Scripting.Internal
         public override string ToString(string padding) => padding + $"[VariableExpr '{Name}' {ScopeInfo}] <{ResultType}>";
     }
 
+    public class ObjectRefExpr : Expression
+    {
+        public string Name;
+
+        public override void Visit(IVisitStatements visitor)
+        {
+            visitor.ObjectRef(this);
+        }
+
+        public override string ToString(string padding)
+        {
+            var str = padding + $"[ObjectRef '{Name}'] <{ResultType}>";
+            return str;
+        }
+    }
 
     public class Ast
     {

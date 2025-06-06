@@ -229,16 +229,16 @@ public class TestBaseLanguage
     public void TestNegateVariable()
     {
         Assert.AreEqual("-1", Script.Execute(
-              "x := 1;\n"
-            + "print(-x);"));
+              "x := 1\n"
+            + "print(-x)"));
     }
 
     [Test]
     public void TestVariableAdd2()
     {
         Assert.AreEqual("4", Script.Execute(
-              "x := 1;\n"
-            + "x = x + 2 + x;\n"
+              "x := 1\n"
+            + "x = x + 2 + x\n"
             + "print(x);"));
     }
 
@@ -248,7 +248,7 @@ public class TestBaseLanguage
         Assert.AreEqual("42", Script.Execute(
               "// Hello\n"
             + "    // Comment ^^\n"
-            + "print(42); // Comment"));
+            + "print(42) // Comment"));
     }
 
     [Test]

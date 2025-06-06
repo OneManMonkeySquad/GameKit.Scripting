@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using GameKit.Scripting.Internal;
-using Unity.Entities;
 
 namespace GameKit.Scripting.Runtime
 {

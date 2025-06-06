@@ -1,6 +1,7 @@
 using System;
-using System.Collections.Generic;
+using System.Threading.Tasks;
 using GameKit.Scripting.Runtime;
+using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 
@@ -8,6 +9,34 @@ namespace GameKit.Scripting.Internal
 {
     public static class Buildin
     {
+        public static async Task<string> Test()
+        {
+            await Task.Delay(2000); // simulate async work (e.g., network call)
+            return "Hello from async!";
+        }
+
+        public static object ResolveObjectRef(string name)
+        {
+            var eq = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(typeof(NamedEntity));
+            var nea = eq.ToComponentDataArray<NamedEntity>(Allocator.Temp);
+            var ents = eq.ToEntityArray(Allocator.Temp);
+
+            Entity result = Entity.Null;
+            for (int i = 0; i < nea.Length; ++i)
+            {
+                if (nea[i].Name == name)
+                {
+                    result = ents[i];
+                    break;
+                }
+            }
+
+            nea.Dispose();
+            ents.Dispose();
+
+            return result;
+        }
+
         [Scriptable("print")]
         public static object Print(object val)
         {
