@@ -13,7 +13,6 @@ namespace GameKit.Scripting.Internal
         void If(If @if) { }
         void LocalVariableDecl(LocalVariableDecl localVariableDecl) { }
         void Assignment(Assignment assignment) { }
-        void PropertyDecl(PropertyDecl propertyDecl) { }
         void FunctionDecl(FunctionDecl functionDecl) { }
         void ValueExpr(ValueExpr valueExpr) { }
         void VariableExpr(VariableExpr variableExpr) { }
@@ -160,18 +159,6 @@ namespace GameKit.Scripting.Internal
             str += Value.ToString(padding + "\t");
             return str;
         }
-    }
-    public class PropertyDecl : Statement
-    {
-        public string Name;
-        public string DeclaredTypeName;
-
-        public override void Visit(IVisitStatements visitor)
-        {
-            visitor.PropertyDecl(this);
-        }
-
-        public override string ToString(string padding) => $"[Property '{Name}'] <{ResultType}>";
     }
 
     public class FunctionDecl : Statement
@@ -325,7 +312,7 @@ namespace GameKit.Scripting.Internal
     }
 
 
-    public enum VariableSource { None, Local, Argument, Property }
+    public enum VariableSource { None, Local, Argument }
 
     public class VariableExpr : Expression
     {
@@ -360,15 +347,10 @@ namespace GameKit.Scripting.Internal
     {
         public string FileNameHint;
         public List<FunctionDecl> Functions;
-        public List<PropertyDecl> Properties;
 
         public void Visit(IVisitStatements visitor)
         {
             visitor.EnterScope();
-            foreach (var prop in Properties)
-            {
-                visitor.PropertyDecl(prop);
-            }
             foreach (var func in Functions)
             {
                 func.Visit(visitor);

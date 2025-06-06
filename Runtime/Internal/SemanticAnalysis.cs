@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using NUnit.Framework;
 
 namespace GameKit.Scripting.Internal
 {
@@ -15,7 +14,6 @@ namespace GameKit.Scripting.Internal
             VariableSource.None => "None",
             VariableSource.Local => "Local",
             VariableSource.Argument => $"Argument:{ArgumentIdx}",
-            VariableSource.Property => "Property",
             _ => throw new Exception("case missing"),
         };
     }
@@ -57,15 +55,6 @@ namespace GameKit.Scripting.Internal
         {
             if (!currentScope.TryFind(var.Name, out var.ScopeInfo))
                 throw new Exception($"Unknown identifier '{var.Name}' (at {var.SourceLocation})");
-        }
-
-        public void PropertyDecl(PropertyDecl prop)
-        {
-            currentScope.LocalVariables[prop.Name] = new ScopeVariableInfo
-            {
-                Source = VariableSource.Property,
-                Declaration = prop,
-            };
         }
 
         public void Assignment(Assignment asn)
@@ -157,11 +146,6 @@ namespace GameKit.Scripting.Internal
             negateExpr.ResultType = negateExpr.Value.ResultType;
         }
 
-        public void PropertyDecl(PropertyDecl propertyDecl)
-        {
-            propertyDecl.ResultType = ScriptingTypeCache.ByName(propertyDecl.DeclaredTypeName);
-        }
-
         public void ValueExpr(ValueExpr valueExpr)
         {
             switch (valueExpr.ValueType)
@@ -200,12 +184,6 @@ namespace GameKit.Scripting.Internal
                 case VariableSource.Argument:
                     {
                         variableExpr.ResultType = typeof(object); // #todo
-                        break;
-                    }
-                case VariableSource.Property:
-                    {
-                        var decl = (PropertyDecl)variableExpr.ScopeInfo.Declaration;
-                        variableExpr.ResultType = decl.ResultType;
                         break;
                     }
             }

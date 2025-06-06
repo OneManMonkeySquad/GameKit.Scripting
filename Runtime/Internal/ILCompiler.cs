@@ -18,7 +18,6 @@ namespace GameKit.Scripting.Internal
         class Globals
         {
             public Dictionary<string, MethodInfo> Methods;
-            public Dictionary<string, FieldInfo> Properties;
         }
 
         static int numRecompiles = 0;
@@ -33,20 +32,6 @@ namespace GameKit.Scripting.Internal
             var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.RunAndCollect);
             var modBuilder = asmBuilder.DefineDynamicModule("MyModule");
             var typeBuilder = modBuilder.DefineType("MyDynamicType" + numRecompiles, TypeAttributes.Public | TypeAttributes.Class);
-
-            // Create Fields for every property
-            var properties = new Dictionary<string, FieldInfo>();
-            foreach (var prop in ast.Properties)
-            {
-                var type = ScriptingTypeCache.ByName(prop.DeclaredTypeName);
-
-                var staticField = typeBuilder.DefineField(
-                      prop.Name,
-                      type,
-                      FieldAttributes.Public | FieldAttributes.Static
-                );
-                properties.Add(prop.Name, staticField);
-            }
 
             var methods = new Dictionary<string, MethodInfo>();
             RegisterScriptableFunctions(methods);
@@ -67,7 +52,6 @@ namespace GameKit.Scripting.Internal
             var globals = new Globals
             {
                 Methods = methods,
-                Properties = properties,
             };
             foreach (var func in ast.Functions)
             {
@@ -78,7 +62,6 @@ namespace GameKit.Scripting.Internal
             var myType = typeBuilder.CreateType();
 
             var methods2 = new Dictionary<string, Delegate>(ast.Functions.Count);
-            var properties2 = new Dictionary<string, FieldInfo>(ast.Properties.Count);
             foreach (var func in ast.Functions)
             {
                 var method = myType.GetMethod(func.Name);
@@ -102,12 +85,8 @@ namespace GameKit.Scripting.Internal
 
                 methods2.Add(func.Name, d);
             }
-            foreach (var prop in ast.Properties)
-            {
-                properties2.Add(prop.Name, myType.GetField(prop.Name));
-            }
 
-            var ca = new CompiledScript(methods2, properties2);
+            var ca = new CompiledScript(methods2);
             return ca;
         }
 
@@ -156,6 +135,11 @@ namespace GameKit.Scripting.Internal
                     il.Pop();
                 }
             }
+
+            if (stmts.Count == 0)
+            {
+                il.Ldnull(); // Caller expects exactly 1 value on stack
+            }
         }
 
         void VisitStatement(Expression stmt, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
@@ -164,9 +148,6 @@ namespace GameKit.Scripting.Internal
 
             switch (stmt)
             {
-                case PropertyDecl:
-                    break;
-
                 case Call call:
                     VisitCall(call, il, globals, localVars);
                     break;
@@ -184,13 +165,6 @@ namespace GameKit.Scripting.Internal
                             }
                             il.Stloc(local);
                             break;
-                        case VariableSource.Property:
-                            {
-                                var prop = globals.Properties[assignment.VariableName];
-                                il.Unbox_Any(prop.FieldType);
-                                il.Stfld(prop);
-                                break;
-                            }
                         default:
                             throw new Exception("missing case (assignment)");
                     }
@@ -269,29 +243,6 @@ namespace GameKit.Scripting.Internal
                         case VariableSource.Argument:
                             il.Ldarg(var.ScopeInfo.ArgumentIdx);
                             break;
-                        case VariableSource.Property:
-                            {
-                                var prop = globals.Properties[var.Name];
-                                il.Ldfld(prop);
-                                if (prop.FieldType.IsValueType)
-                                {
-                                    il.Box(prop.FieldType);
-                                }
-
-                                // if (prop.FieldType == typeof(Entity))
-                                // {
-                                //     il.Call(typeof(Value).GetMethod("FromEntity"));
-                                // }
-                                // else if (prop.FieldType == typeof(int))
-                                // {
-                                //     il.Call(typeof(Value).GetMethod("FromInt"));
-                                // }
-                                // else
-                                // {
-                                //     throw new Exception("case missing");
-                                // }
-                                break;
-                            }
                         default:
                             throw new Exception("case missing (variable source)");
                     }

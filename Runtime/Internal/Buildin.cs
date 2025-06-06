@@ -17,24 +17,40 @@ namespace GameKit.Scripting.Internal
 
         public static object ResolveObjectRef(string name)
         {
-            var eq = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(typeof(NamedEntity));
-            var nea = eq.ToComponentDataArray<NamedEntity>(Allocator.Temp);
-            var ents = eq.ToEntityArray(Allocator.Temp);
-
-            Entity result = Entity.Null;
-            for (int i = 0; i < nea.Length; ++i)
             {
-                if (nea[i].Name == name)
+                var eq = World.DefaultGameObjectInjectionWorld.EntityManager.CreateEntityQuery(typeof(NamedEntity));
+                var nea = eq.ToComponentDataArray<NamedEntity>(Allocator.Temp);
+                var ents = eq.ToEntityArray(Allocator.Temp);
+
+                Entity result = Entity.Null;
+                for (int i = 0; i < nea.Length; ++i)
                 {
-                    result = ents[i];
-                    break;
+                    if (nea[i].Name == name)
+                    {
+                        result = ents[i];
+                        break;
+                    }
+                }
+
+                nea.Dispose();
+                ents.Dispose();
+
+                if (result != Entity.Null)
+                    return result;
+            }
+
+            {
+                if (NamedScriptableObjects.Instance != null)
+                {
+                    foreach (var so in NamedScriptableObjects.Instance.Foo)
+                    {
+                        if (so.name == name)
+                            return so;
+                    }
                 }
             }
 
-            nea.Dispose();
-            ents.Dispose();
-
-            return result;
+            throw new Exception($"ObjectRef '{name}' no found");
         }
 
         [Scriptable("print")]

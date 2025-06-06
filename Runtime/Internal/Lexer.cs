@@ -39,7 +39,6 @@ namespace GameKit.Scripting.Internal
         CmpAnd, // &&
 
         Function, // func
-        Property, // prop
         If,
         Else,
 
@@ -51,7 +50,7 @@ namespace GameKit.Scripting.Internal
         Double
     }
 
-    public class Token
+    public struct Token
     {
         public TokenKind Kind;
         public string Content;
@@ -87,7 +86,6 @@ namespace GameKit.Scripting.Internal
             TokenKind.CmpAnd => "&&",
             TokenKind.Star => "*",
             TokenKind.Function => "func",
-            TokenKind.Property => "prop",
             TokenKind.If => "if",
             TokenKind.Else => "else",
             TokenKind.Null => "null",
@@ -294,10 +292,6 @@ namespace GameKit.Scripting.Internal
             else if (content == "func")
             {
                 tokens.Add(new Token { Kind = TokenKind.Function, SourceLoc = sourceLoc });
-            }
-            else if (content == "prop")
-            {
-                tokens.Add(new Token { Kind = TokenKind.Property, SourceLoc = sourceLoc });
             }
             else if (content == "null")
             {

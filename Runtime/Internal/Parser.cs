@@ -17,7 +17,6 @@ namespace GameKit.Scripting.Internal
             _lexer = new Lexer(str, fileNameHint);
 
             var functions = new List<FunctionDecl>();
-            var properties = new List<PropertyDecl>();
 
             var statements = new List<Expression>();
             while (!_lexer.EndOfFile())
@@ -26,10 +25,6 @@ namespace GameKit.Scripting.Internal
                 if (stmt is FunctionDecl func)
                 {
                     functions.Add(func);
-                }
-                else if (stmt is PropertyDecl prop)
-                {
-                    properties.Add(prop);
                 }
                 else
                 {
@@ -47,7 +42,6 @@ namespace GameKit.Scripting.Internal
             {
                 FileNameHint = fileNameHint,
                 Functions = functions,
-                Properties = properties,
             };
 
             var sa = new SemanticAnalysis();
@@ -55,10 +49,6 @@ namespace GameKit.Scripting.Internal
 
             //
 
-            foreach (var p in properties)
-            {
-                File.AppendAllText("E:\\ast.txt", $"property {p.Name} <{p.ResultType}>\n");
-            }
             File.AppendAllText("E:\\ast.txt", "\n");
 
             foreach (var f in functions)
@@ -76,9 +66,6 @@ namespace GameKit.Scripting.Internal
 
         Expression ParseStatement()
         {
-            if (_lexer.Peek(TokenKind.Property))
-                return ParseProperty();
-
             if (_lexer.Peek(TokenKind.If))
                 return ParseIfStatement();
 
@@ -122,16 +109,6 @@ namespace GameKit.Scripting.Internal
             _lexer.Accept(TokenKind.Semicolon);
 
             return new Call { Name = name.Content, Arguments = arguments, SourceLocation = name.SourceLoc };
-        }
-
-        Statement ParseProperty()
-        {
-            var tk = _lexer.Accept(TokenKind.Property);
-            var name = _lexer.Accept(TokenKind.NonTerminal, "Property Name");
-            _lexer.Accept(TokenKind.Colon);
-            var type = _lexer.Accept(TokenKind.NonTerminal, "Property Type");
-            _lexer.Accept(TokenKind.Semicolon);
-            return new PropertyDecl { Name = name.Content, DeclaredTypeName = type.Content, SourceLocation = tk.SourceLoc };
         }
 
         Statement ParseIfStatement()
@@ -202,10 +179,6 @@ namespace GameKit.Scripting.Internal
                 if (stmt is FunctionDecl)
                 {
                     _lexer.ThrowError("Local functions are not supported", firstTk.SourceLoc);
-                }
-                else if (stmt is PropertyDecl)
-                {
-                    _lexer.ThrowError("Local properties are not supported", firstTk.SourceLoc);
                 }
                 else
                 {

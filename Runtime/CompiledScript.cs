@@ -7,25 +7,14 @@ namespace GameKit.Scripting.Runtime
     public class CompiledScript
     {
         Dictionary<string, Delegate> _functions;
-        Dictionary<string, FieldInfo> _properties;
 
-        public CompiledScript(Dictionary<string, Delegate> functions, Dictionary<string, FieldInfo> properties)
+        public CompiledScript(Dictionary<string, Delegate> functions)
         {
             _functions = functions;
-            _properties = properties;
-        }
-
-        public void SetProperty(string name, object value)
-        {
-            _properties[name].SetValue(null, value);
         }
 
         public void CopyStateTo(CompiledScript other)
         {
-            foreach (var entry in _properties)
-            {
-                other.SetProperty(entry.Key, entry.Value.GetValue(null));
-            }
         }
 
         public bool HasFunction(string name)

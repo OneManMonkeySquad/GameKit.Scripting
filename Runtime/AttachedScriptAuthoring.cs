@@ -18,14 +18,6 @@ namespace GameKit.Scripting.Runtime
     }
 
     [InternalBufferCapacity(0)]
-    public struct PropertyValue : IBufferElementData
-    {
-        public FixedString32Bytes Name; // #todo this should be baked into BakedScript
-        public UnityObjectRef<Object> ValueManaged;
-        public PodValue Value;
-    }
-
-    [InternalBufferCapacity(0)]
     public struct ScriptEvent : IBufferElementData
     {
         public FixedString32Bytes Name;
@@ -35,11 +27,6 @@ namespace GameKit.Scripting.Runtime
     {
         public ScriptAsset Asset;
         public TransformUsageFlags TransformUsage;
-
-        public string[] PropertyNames;
-        public string[] PropertyTypeNames;
-        public Object[] PropertyValuesManaged;
-        public PodValue[] PropertyValuesPod;
 
         public class Baker : Baker<AttachedScriptAuthoring>
         {
@@ -56,7 +43,7 @@ namespace GameKit.Scripting.Runtime
 
                     script.FileNameHint = authoring.Asset.FileNameHint;
                     builder.AllocateString(ref script.Code, authoring.Asset.Code);
-                    script.CodeHash = authoring.Asset.Code.GetHashCode(); // #todo include property values
+                    script.CodeHash = authoring.Asset.Code.GetHashCode();
 
                     result = builder.CreateBlobAssetReference<BlobScript>(Allocator.Persistent);
                     builder.Dispose();
@@ -72,43 +59,6 @@ namespace GameKit.Scripting.Runtime
 
                 var eventBuff = AddBuffer<ScriptEvent>(entity);
                 eventBuff.Add(new ScriptEvent { Name = "on_init" });
-
-                var propertyBuff = AddBuffer<PropertyValue>(entity);
-                if (authoring.PropertyValuesManaged != null)
-                {
-                    for (int i = 0; i < authoring.PropertyTypeNames.Length; ++i)
-                    {
-                        var value = new PropertyValue { };
-                        value.Name = authoring.PropertyNames[i];
-
-                        var propertyTypeName = authoring.PropertyTypeNames[i];
-                        var propertyType = ScriptingTypeCache.ByName(propertyTypeName);
-                        if (!propertyType.IsClass && propertyType != typeof(Entity))
-                        {
-                            if (propertyType == typeof(int))
-                            {
-                                value.Value = authoring.PropertyValuesPod[i];
-                            }
-                            else
-                            {
-                                Debug.LogError("Missing");
-                            }
-                        }
-                        else
-                        {
-                            if (propertyType == typeof(Entity))
-                            {
-                                value.Value = PodValue.FromEntity(GetEntity((GameObject)authoring.PropertyValuesManaged[i], TransformUsageFlags.None));
-                            }
-                            else
-                            {
-                                value.ValueManaged = authoring.PropertyValuesManaged[i];
-                            }
-                        }
-
-                        propertyBuff.Add(value);
-                    }
-                }
             }
         }
     }

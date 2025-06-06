@@ -18,38 +18,12 @@ namespace GameKit.Scripting.Runtime
         {
             EntityCommandBuffer ecb = SystemAPI.GetSingletonRW<BeginInitializationEntityCommandBufferSystem.Singleton>().ValueRW.CreateCommandBuffer(state.WorldUnmanaged);
 
-            foreach (var (attachedScript, props, entity) in SystemAPI.Query<AttachedScript, DynamicBuffer<PropertyValue>>().WithNone<AttachedCompiledScript>().WithEntityAccess())
+            foreach (var (attachedScript, entity) in SystemAPI.Query<AttachedScript>().WithNone<AttachedCompiledScript>().WithEntityAccess())
             {
                 if (!attachedScript.Script.IsCreated)
                     continue;
 
                 var compiledScript = Script.Compile(attachedScript.Script.Value.Code.ToString(), attachedScript.Script.Value.FileNameHint.ToString());
-
-                for (int i = 0; i < props.Length; ++i)
-                {
-                    object value;
-
-                    var prop = props[i];
-                    if (prop.ValueManaged)
-                    {
-                        value = prop.ValueManaged.Value;
-                    }
-                    else
-                    {
-                        value = prop.Value.Type switch
-                        {
-                            ValueTypeIdx.Null => null,
-                            ValueTypeIdx.Bool => prop.Value.AsBool,
-                            ValueTypeIdx.Int => prop.Value.AsInt,
-                            ValueTypeIdx.Float => prop.Value.AsFloat,
-                            ValueTypeIdx.Double => prop.Value.AsDouble,
-                            ValueTypeIdx.Entity => prop.Value.AsEntity,
-                            _ => throw new System.Exception("missing case"),
-                        };
-                    }
-
-                    compiledScript.SetProperty(prop.Name.ToString(), value);
-                }
 
                 ecb.AddComponent(entity, new AttachedCompiledScript
                 {

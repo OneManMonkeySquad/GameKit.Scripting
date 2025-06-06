@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Linq;
 using GameKit.Scripting.Runtime;
 using UnityEditor;
 using UnityEditor.AssetImporters;
@@ -30,9 +29,6 @@ namespace GameKit.Scripting
                 var ast = Script.Parse(code, ctx.assetPath);
                 asset.Code = code;
                 asset.FileNameHint = ctx.assetPath;
-                asset.PropertyNames = ast.Properties.Select(p => p.Name).ToList();
-                asset.PropertyTypeNames = ast.Properties.Select(p => p.DeclaredTypeName).ToList();
-
                 asset.LastCompilationFailed = false;
 
                 var cs = Script.Compile(ast);
