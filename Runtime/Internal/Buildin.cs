@@ -1,18 +1,21 @@
 using System;
+using System.Collections;
 using System.Threading.Tasks;
 using GameKit.Scripting.Runtime;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace GameKit.Scripting.Internal
 {
     public static class Buildin
     {
-        public static async Task<string> Test()
+        public static IEnumerator Test()
         {
-            await Task.Delay(2000); // simulate async work (e.g., network call)
-            return "Hello from async!";
+            yield return new WaitForSeconds(1);
+
+            Debug.Log("OKOKOK");
         }
 
         public static object ResolveObjectRef(string name)
@@ -51,6 +54,31 @@ namespace GameKit.Scripting.Internal
             }
 
             throw new Exception($"ObjectRef '{name}' no found");
+        }
+
+        public static object StartCoroutine(object e)
+        {
+            Debug.Log("Buildin.StartCoroutine " + e);
+            NamedScriptableObjects.Instance.StartCoroutine((IEnumerator)e);
+            return null;
+        }
+
+        [Scriptable("_wait")]
+        public static IEnumerator Wait()
+        {
+            return null;
+        }
+
+        [Scriptable("float3")]
+        public static object Float3(object x, object y, object z)
+        {
+            return new float3((float)x, (float)y, (float)z);
+        }
+
+        [Scriptable("frame_number")]
+        public static object FrameNumber()
+        {
+            return Time.frameCount;
         }
 
         [Scriptable("print")]

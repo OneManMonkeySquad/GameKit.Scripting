@@ -6,22 +6,10 @@ namespace GameKit.Scripting.Internal
     public enum TokenKind
     {
         NonTerminal,
-        /// <summary>
-        /// (
-        /// </summary>
-        ParenOpen,
-        /// <summary>
-        /// )
-        /// </summary>
-        ParenClose,
-        /// <summary>
-        /// {
-        /// </summary>
-        BraceOpen,
-        /// <summary>
-        /// }
-        /// </summary>
-        BraceClose,
+        ParenOpen, // (
+        ParenClose, // )
+        BraceOpen, // {
+        BraceClose, // }
         Semicolon,
         Comma,
         Equal, // =
@@ -30,17 +18,17 @@ namespace GameKit.Scripting.Internal
         Plus, // +
         Minus, // -
         At, // @
+        Star, // *
+        Function, // func
+        If, // if
+        Else, // else
+        Branch, // branch
 
         CmpEq, // ==
         CmpNEq, // !=
         CmpGt, // >
         CmpLEq, // <=
-        Star, // *
         CmpAnd, // &&
-
-        Function, // func
-        If,
-        Else,
 
         Null, // null
         String,
@@ -79,15 +67,16 @@ namespace GameKit.Scripting.Internal
             TokenKind.Plus => "+",
             TokenKind.Minus => "-",
             TokenKind.At => "@",
+            TokenKind.Star => "*",
+            TokenKind.Function => "func",
+            TokenKind.If => "if",
+            TokenKind.Else => "else",
+            TokenKind.Branch => "branch",
             TokenKind.CmpGt => ">",
             TokenKind.CmpLEq => "<=",
             TokenKind.CmpEq => "==",
             TokenKind.CmpNEq => "!=",
             TokenKind.CmpAnd => "&&",
-            TokenKind.Star => "*",
-            TokenKind.Function => "func",
-            TokenKind.If => "if",
-            TokenKind.Else => "else",
             TokenKind.Null => "null",
             TokenKind.String => "<string>",
             TokenKind.Integer => "<integer>",
@@ -293,6 +282,10 @@ namespace GameKit.Scripting.Internal
             {
                 tokens.Add(new Token { Kind = TokenKind.Function, SourceLoc = sourceLoc });
             }
+            else if (content == "branch")
+            {
+                tokens.Add(new Token { Kind = TokenKind.Branch, SourceLoc = sourceLoc });
+            }
             else if (content == "null")
             {
                 tokens.Add(new Token { Kind = TokenKind.Null, SourceLoc = sourceLoc });
@@ -361,7 +354,7 @@ namespace GameKit.Scripting.Internal
         {
             var tk = _tokens[_currentTokenIdx];
             if (tk.Kind != kind)
-                throw new System.Exception($"Expected {Token.TokenTypeToString(kind)} {(what != null ? $"({what})" : "")} got {tk} (at {tk.SourceLoc})");
+                throw new System.Exception($"Expected {(what != null ? $"({what}) " : "")}{Token.TokenTypeToString(kind)} got {tk} (at {tk.SourceLoc})");
 
             ++_currentTokenIdx;
             return tk;

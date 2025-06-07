@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -22,7 +23,7 @@ namespace GameKit.Scripting.Internal
 
         static int numRecompiles = 0;
 
-        public CompiledScript Compile(Ast ast)
+        public CompiledScript Compile(Ast ast, Dictionary<string, MethodInfo> scriptableFunctions)
         {
             File.WriteAllText("E:\\il.txt", "");
 
@@ -33,8 +34,7 @@ namespace GameKit.Scripting.Internal
             var modBuilder = asmBuilder.DefineDynamicModule("MyModule");
             var typeBuilder = modBuilder.DefineType("MyDynamicType" + numRecompiles, TypeAttributes.Public | TypeAttributes.Class);
 
-            var methods = new Dictionary<string, MethodInfo>();
-            RegisterScriptableFunctions(methods);
+            var methods = scriptableFunctions;
 
             foreach (var func in ast.Functions)
             {
@@ -56,12 +56,12 @@ namespace GameKit.Scripting.Internal
             foreach (var func in ast.Functions)
             {
                 var method = methods[func.Name];
-                EmitFunctionIL(func, (MethodBuilder)method, globals);
+                EmitFunctionIL(func, (MethodBuilder)method, globals, typeBuilder);
             }
 
             var myType = typeBuilder.CreateType();
 
-            var methods2 = new Dictionary<string, Delegate>(ast.Functions.Count);
+            var methodDelegates = new Dictionary<string, Delegate>(ast.Functions.Count);
             foreach (var func in ast.Functions)
             {
                 var method = myType.GetMethod(func.Name);
@@ -83,53 +83,169 @@ namespace GameKit.Scripting.Internal
                 if (d == null)
                     throw new Exception("todo");
 
-                methods2.Add(func.Name, d);
+                methodDelegates.Add(func.Name, d);
             }
 
-            var ca = new CompiledScript(methods2);
+            var ca = new CompiledScript(methodDelegates);
             return ca;
         }
 
-        void RegisterScriptableFunctions(Dictionary<string, MethodInfo> methods)
-        {
-#if UNITY_EDITOR
-            var taggedMethods = TypeCache.GetMethodsWithAttribute<ScriptableAttribute>();
-            foreach (var taggedMethod in taggedMethods)
-            {
-                var name = taggedMethod.GetCustomAttribute<ScriptableAttribute>().Name;
-                if (methods.ContainsKey(name))
-                {
-                    Debug.LogError($"Multiple Scriptable methods with the same name '{name}'. This is not supported.");
-                    continue;
-                }
-
-                methods[name] = taggedMethod;
-            }
-#else
-            // #todo
-#endif
-        }
-
-        void EmitFunctionIL(FunctionDecl func, MethodBuilder method, Globals globals)
+        static bool _isInCoroutineFunction;
+        void EmitFunctionIL(FunctionDecl func, MethodBuilder method, Globals globals, TypeBuilder typeBuilder)
         {
             File.AppendAllText("E:\\il.txt", $"=== {func} ===\n");
 
+            _isInCoroutineFunction = func.IsCoroutine;
+
+            using var il = new GroboIL(method);
             var localVars = new Dictionary<string, GroboIL.Local>();
-            using (var il = new GroboIL(method))
+            if (!func.IsCoroutine)
             {
-                VisitStatements(func.Statements, il, globals, localVars);
+                EmitBodyIL(func.Body, il, globals, localVars);
                 il.Ret();
 
                 File.AppendAllText("E:\\il.txt", il.GetILCode() + "\n");
             }
+            else
+            {
+                var stateMachineBuilder = typeBuilder.DefineNestedType(func.Name + "CoroutineStateMachine", TypeAttributes.NestedPrivate | TypeAttributes.Sealed);
+                stateMachineBuilder.AddInterfaceImplementation(typeof(IEnumerator));
+                stateMachineBuilder.AddInterfaceImplementation(typeof(IDisposable));
+
+                var stateField = stateMachineBuilder.DefineField("state", typeof(int), FieldAttributes.Public);
+                var currentField = stateMachineBuilder.DefineField("current", typeof(object), FieldAttributes.Public);
+
+                // Constructor
+                var ctor = stateMachineBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, new[] { typeof(int) });
+                var ctorIL = new GroboIL(ctor);
+                ctorIL.Ldarg(0);
+                ctorIL.Call(typeof(object).GetConstructor(Type.EmptyTypes));
+                ctorIL.Ldarg(0);
+                ctorIL.Ldarg(1);
+                ctorIL.Stfld(stateField);
+                ctorIL.Ret();
+
+                // get_Current
+                var getCurrent = stateMachineBuilder.DefineMethod("get_Current", MethodAttributes.Public | MethodAttributes.Virtual, typeof(object), Type.EmptyTypes);
+                var currentIL = new GroboIL(getCurrent);
+                currentIL.Ldarg(0);
+                currentIL.Ldfld(currentField);
+                currentIL.Ret();
+                stateMachineBuilder.DefineMethodOverride(getCurrent, typeof(IEnumerator).GetProperty("Current").GetGetMethod());
+
+                // IEnumerator.Current (non-generic)
+                var getCurrent2 = stateMachineBuilder.DefineMethod("System.Collections.IEnumerator.get_Current", MethodAttributes.Private | MethodAttributes.Virtual, typeof(object), Type.EmptyTypes);
+                var currentIL2 = new GroboIL(getCurrent2);
+                currentIL2.Ldarg(0);
+                currentIL2.Ldfld(currentField);
+                currentIL2.Ret();
+                stateMachineBuilder.DefineMethodOverride(getCurrent2, typeof(IEnumerator).GetProperty("Current").GetGetMethod());
+
+                // Reset
+                var reset = stateMachineBuilder.DefineMethod("Reset", MethodAttributes.Public | MethodAttributes.Virtual, typeof(void), Type.EmptyTypes);
+                var resetIL = new GroboIL(reset);
+                resetIL.Newobj(typeof(NotSupportedException).GetConstructor(Type.EmptyTypes));
+                resetIL.Throw();
+                stateMachineBuilder.DefineMethodOverride(reset, typeof(IEnumerator).GetMethod("Reset"));
+
+                // Dispose
+                var dispose = stateMachineBuilder.DefineMethod("Dispose", MethodAttributes.Public | MethodAttributes.Virtual, typeof(void), Type.EmptyTypes);
+                var disposeIL = new GroboIL(dispose);
+                disposeIL.Ret();
+                stateMachineBuilder.DefineMethodOverride(dispose, typeof(IDisposable).GetMethod("Dispose"));
+
+                // MoveNext
+                var moveNext = stateMachineBuilder.DefineMethod("MoveNext", MethodAttributes.Public | MethodAttributes.Virtual, typeof(bool), Type.EmptyTypes);
+                {
+                    var moveNextIl = new GroboIL(moveNext);
+
+                    int numLabels = 1; // First label is start
+                    AllocateLabels(func.Body, ref numLabels);
+
+                    var labels = new List<GroboIL.Label>();
+                    for (int i = 0; i < numLabels; ++i)
+                    {
+                        var newLabel = moveNextIl.DefineLabel("Label");
+                        labels.Add(newLabel);
+                    }
+
+                    var labelEnd = moveNextIl.DefineLabel("End");
+
+                    _labels = labels;
+                    _labelIdx = 0;
+                    _stateField = stateField;
+
+                    moveNextIl.Ldarg(0);
+                    moveNextIl.Ldfld(stateField);
+                    moveNextIl.Switch(labels.ToArray());
+                    moveNextIl.Br(labelEnd);
+
+                    moveNextIl.MarkLabel(labels[_labelIdx++]);
+                    EmitBodyIL(func.Body, moveNextIl, globals, localVars);
+
+                    moveNextIl.Pop();
+                    moveNextIl.Ldc_I4(0);
+                    moveNextIl.Ret();
+
+                    moveNextIl.MarkLabel(labelEnd);
+                    moveNextIl.Ldc_I4(0);
+                    moveNextIl.Ret();
+
+                    _labels = null;
+                    _labelIdx = 0;
+                    _stateField = null;
+
+                    File.AppendAllText("E:\\il.txt", "Coroutine:\n");
+                    File.AppendAllText("E:\\il.txt", moveNextIl.GetILCode() + "\n");
+                }
+
+
+                stateMachineBuilder.DefineMethodOverride(moveNext, typeof(IEnumerator).GetMethod("MoveNext"));
+
+                //
+                var smType = stateMachineBuilder.CreateType();
+
+                il.Ldc_I4(0);
+                il.Newobj(smType.GetConstructor(new[] { typeof(int) }));
+                il.Ret();
+
+                File.AppendAllText("E:\\il.txt", "Method:\n");
+                File.AppendAllText("E:\\il.txt", il.GetILCode() + "\n");
+            }
         }
 
-        void VisitStatements(List<Expression> stmts, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
+        static List<GroboIL.Label> _labels;
+        static int _labelIdx;
+        static FieldBuilder _stateField;
+
+        void AllocateLabels(List<Expression> stmts, ref int numLabels)
         {
             for (int i = 0; i < stmts.Count; i++)
             {
                 Expression stmt = stmts[i];
-                VisitStatement(stmt, il, globals, localVars);
+                AllocateLabels(stmt, ref numLabels);
+            }
+        }
+
+        void AllocateLabels(Expression expr, ref int numLabels)
+        {
+            switch (expr)
+            {
+                case Call call:
+                    if (call.IsCoroutine)
+                    {
+                        ++numLabels;
+                    }
+                    break;
+            }
+        }
+
+        void EmitBodyIL(List<Expression> stmts, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
+        {
+            for (int i = 0; i < stmts.Count; i++)
+            {
+                Expression stmt = stmts[i];
+                VisitExpression(stmt, il, globals, localVars);
                 if (i != stmts.Count - 1)
                 {
                     il.Pop();
@@ -142,16 +258,14 @@ namespace GameKit.Scripting.Internal
             }
         }
 
-        void VisitStatement(Expression stmt, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
+        void VisitExpression(Expression expr, GroboIL il,
+            Globals globals,
+            Dictionary<string, GroboIL.Local> localVars)
         {
-            Assert.IsNotNull(stmt);
+            Assert.IsNotNull(expr);
 
-            switch (stmt)
+            switch (expr)
             {
-                case Call call:
-                    VisitCall(call, il, globals, localVars);
-                    break;
-
                 case Assignment assignment:
                     VisitExpression(assignment.Value, il, globals, localVars);
                     il.Dup(); // Make sure the expression value remains after store
@@ -170,32 +284,6 @@ namespace GameKit.Scripting.Internal
                     }
                     break;
 
-                case LocalVariableDecl:
-                    VisitExpression(stmt, il, globals, localVars);
-                    break;
-
-                case If:
-                    VisitExpression(stmt, il, globals, localVars);
-                    break;
-
-                case ValueExpr:
-                    VisitExpression(stmt, il, globals, localVars);
-                    // #todo result?
-                    break;
-
-                default:
-                    throw new Exception("missing case " + stmt);
-            }
-        }
-
-        void VisitExpression(Expression expr, GroboIL il,
-            Globals globals,
-            Dictionary<string, GroboIL.Local> localVars)
-        {
-            Assert.IsNotNull(expr);
-
-            switch (expr)
-            {
                 case ValueExpr var:
                     switch (var.ValueType)
                     {
@@ -290,6 +378,42 @@ namespace GameKit.Scripting.Internal
 
                 case Call call:
                     VisitCall(call, il, globals, localVars);
+
+                    if (call.IsCoroutine)
+                    {
+                        if (_isInCoroutineFunction)
+                        {
+                            il.Pop();
+
+                            if (_labelIdx < _labels.Count)
+                            {
+                                il.Ldarg(0);
+                                il.Ldc_I4(_labelIdx);
+                                il.Stfld(_stateField);
+
+                                il.Ldc_I4(1);
+                                il.Ret();
+
+                                il.MarkLabel(_labels[_labelIdx++]);
+                            }
+                            else
+                            {
+                                il.Ldarg(0);
+                                il.Ldc_I4(-1);
+                                il.Stfld(_stateField);
+
+                                il.Ldc_I4(0);
+                                il.Ret();
+                            }
+
+                            il.Ldc_I4(1337); // #todo Push dummy value that can be popped by EmitBodyIL...
+                        }
+                        else
+                        {
+                            // #todo switch dispatch depending on branch/sync/race block
+                            il.Call(typeof(Buildin).GetMethod("StartCoroutine"));
+                        }
+                    }
                     break;
 
                 case GroupingExpr group:
@@ -304,13 +428,13 @@ namespace GameKit.Scripting.Internal
                     var conditionWasFalse = il.DefineLabel("if_false");
 
                     il.Brfalse(conditionWasFalse);
-                    VisitStatements(ifStmt.TrueStatements, il, globals, localVars);
+                    EmitBodyIL(ifStmt.TrueStatements, il, globals, localVars);
                     il.Br(conditionWasTrue);
 
                     il.MarkLabel(conditionWasFalse);
                     if (ifStmt.FalseStatements != null)
                     {
-                        VisitStatements(ifStmt.FalseStatements, il, globals, localVars);
+                        EmitBodyIL(ifStmt.FalseStatements, il, globals, localVars);
                     }
                     else
                     {
@@ -332,6 +456,10 @@ namespace GameKit.Scripting.Internal
                     il.Call(typeof(Buildin).GetMethod("ResolveObjectRef"));
                     break;
 
+                case BranchExpr branch:
+                    EmitBodyIL(branch.Body, il, globals, localVars);
+                    break;
+
                 default:
                     throw new Exception("Missing case " + expr);
             }
@@ -342,18 +470,10 @@ namespace GameKit.Scripting.Internal
             if (!globals.Methods.TryGetValue(call.Name, out MethodInfo method))
                 throw new Exception($"Function '{call.Name}' not found (at {call.SourceLocation})");
 
-            // var parameters = method.GetParameters();
-
             for (int i = 0; i < call.Arguments.Count; i++)
             {
                 var arg = call.Arguments[i];
                 VisitExpression(arg, il, globals, localVars);
-
-                // var param = parameters[i];
-                // if (param.GetType() != typeof(object))
-                // {
-                //     // #todo
-                // }
             }
 
             il.Call(method);

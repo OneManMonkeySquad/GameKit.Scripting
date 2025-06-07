@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 
 namespace GameKit.Scripting.Internal
 {
@@ -10,10 +11,8 @@ namespace GameKit.Scripting.Internal
         /// <summary>
         /// Compile the passed code into an AST. Throws exceptions on error.
         /// </summary>
-        public Ast ParseToAst(string str, string fileNameHint)
+        public Ast ParseToAst(string str, string fileNameHint, Dictionary<string, MethodInfo> methods)
         {
-            File.WriteAllText("E:\\ast.txt", "");
-
             _lexer = new Lexer(str, fileNameHint);
 
             var functions = new List<FunctionDecl>();
@@ -34,7 +33,7 @@ namespace GameKit.Scripting.Internal
 
             if (statements.Count > 0)
             {
-                functions.Add(new FunctionDecl { Name = "main", Statements = statements, ParameterNames = new() });
+                functions.Add(new FunctionDecl { Name = "main", Body = statements, ParameterNames = new() });
             }
 
             //
@@ -44,20 +43,15 @@ namespace GameKit.Scripting.Internal
                 Functions = functions,
             };
 
-            var sa = new SemanticAnalysis();
-            sa.Analyse(ast);
+            SemanticAnalysis.Analyse(ast, methods);
 
             //
-
+            File.WriteAllText("E:\\ast.txt", "");
             File.AppendAllText("E:\\ast.txt", "\n");
 
             foreach (var f in functions)
             {
                 File.AppendAllText("E:\\ast.txt", $"{f.ToString("")}\n");
-                foreach (var st in f.Statements)
-                {
-                    File.AppendAllText("E:\\ast.txt", $"{st.ToString("\t")}\n\n");
-                }
                 File.AppendAllText("E:\\ast.txt", "\n");
             }
 
@@ -66,17 +60,30 @@ namespace GameKit.Scripting.Internal
 
         Expression ParseStatement()
         {
-            if (_lexer.Peek(TokenKind.If))
-                return ParseIfStatement();
-
             if (_lexer.Peek(TokenKind.Function))
                 return ParseFunction();
+
+            if (_lexer.Peek(TokenKind.If))
+                return ParseExpression();
 
             if (_lexer.Peek(TokenKind.Integer) || _lexer.Peek(TokenKind.String) || _lexer.Peek(TokenKind.Float))
             {
                 var value = ParseExpression();
                 _lexer.Accept(TokenKind.Semicolon);
                 return value;
+            }
+
+            if (_lexer.Peek(TokenKind.Branch))
+            {
+                var tk = _lexer.Consume();
+
+                var statements = ParseBlock();
+
+                return new BranchExpr
+                {
+                    Body = statements,
+                    SourceLocation = tk.SourceLoc
+                };
             }
 
             //
@@ -111,62 +118,31 @@ namespace GameKit.Scripting.Internal
             return new Call { Name = name.Content, Arguments = arguments, SourceLocation = name.SourceLoc };
         }
 
-        Statement ParseIfStatement()
-        {
-            _lexer.Accept(TokenKind.If);
-
-            // Condition
-            var cond = ParseExpression();
-
-            // True Body
-            var statements = ParseBody();
-
-            // Else?
-            List<Expression> falseStatements = null;
-            if (_lexer.Peek(TokenKind.Else))
-            {
-                _lexer.Consume();
-
-                if (_lexer.Peek(TokenKind.If))
-                {
-                    falseStatements = new List<Expression>{
-                        ParseIfStatement()
-                    };
-                }
-                else
-                {
-                    falseStatements = ParseBody();
-                }
-            }
-
-            return new If
-            {
-                Condition = cond,
-                TrueStatements = statements,
-                FalseStatements = falseStatements,
-                SourceLocation = cond.SourceLocation
-            };
-        }
-
-        Statement ParseFunction()
+        /// <summary>
+        /// "func" identifier "(" Parameters ")" "{" Body "}"
+        /// </summary>
+        FunctionDecl ParseFunction()
         {
             _lexer.Accept(TokenKind.Function);
 
-            var name = _lexer.Accept(TokenKind.NonTerminal);
+            var name = _lexer.Accept(TokenKind.NonTerminal, "Function Name");
 
             var parameters = ParseParameters();
-            var statements = ParseBody();
+            var statements = ParseBlock();
 
             return new FunctionDecl
             {
                 Name = name.Content,
-                Statements = statements,
+                Body = statements,
                 ParameterNames = parameters,
                 SourceLocation = name.SourceLoc
             };
         }
 
-        List<Expression> ParseBody()
+        /// <summary>
+        /// "{" {Expression} "}"
+        /// </summary>
+        List<Expression> ParseBlock()
         {
             _lexer.Accept(TokenKind.BraceOpen);
 
@@ -200,7 +176,7 @@ namespace GameKit.Scripting.Internal
                 var cond = ParseAnd();
 
                 // True Body
-                var statements = ParseBody();
+                var statements = ParseBlock();
 
                 // Else?
                 List<Expression> falseStatements = null;
@@ -211,12 +187,12 @@ namespace GameKit.Scripting.Internal
                     if (_lexer.Peek(TokenKind.If))
                     {
                         falseStatements = new List<Expression>{
-                            ParseIfStatement()
+                            ParseExpression()
                         };
                     }
                     else
                     {
-                        falseStatements = ParseBody();
+                        falseStatements = ParseBlock();
                     }
                 }
 

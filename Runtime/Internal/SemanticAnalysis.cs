@@ -1,5 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace GameKit.Scripting.Internal
 {
@@ -7,7 +10,7 @@ namespace GameKit.Scripting.Internal
     {
         public VariableSource Source;
         public int ArgumentIdx;
-        public Statement Declaration;
+        public Expression Declaration;
 
         public override string ToString() => Source switch
         {
@@ -94,6 +97,17 @@ namespace GameKit.Scripting.Internal
                 });
             }
         }
+
+        public void Call(Call call) { }
+        public void If(If @if) { }
+        public void ValueExpr(ValueExpr valueExpr) { }
+        public void GroupingExpr(GroupingExpr groupingExpr) { }
+        public void NegateExpr(NegateExpr negateExpr) { }
+        public void CmpExpr(CmpExpr cmpExpr) { }
+        public void MulExpr(MulExpr mulExpr) { }
+        public void AddExpr(AddExpr addExpr) { }
+        public void ObjectRef(ObjectRefExpr objectRefExpr) { }
+        public void BranchExpr(BranchExpr branchExpr) { }
     }
 
 
@@ -133,7 +147,7 @@ namespace GameKit.Scripting.Internal
 
         public void If(If @if)
         {
-            @if.ResultType = typeof(void);
+            @if.ResultType = typeof(object);
         }
 
         public void LocalVariableDecl(LocalVariableDecl localVariableDecl)
@@ -191,17 +205,116 @@ namespace GameKit.Scripting.Internal
 
 
         }
+
+        public void ObjectRef(ObjectRefExpr objectRefExpr)
+        {
+            objectRefExpr.ResultType = typeof(object);
+        }
+
+        public void BranchExpr(BranchExpr branchExpr)
+        {
+            branchExpr.ResultType = typeof(object);
+        }
+
+        public void EnterScope() { }
+        public void ExitScope() { }
     }
 
-    public class SemanticAnalysis
+    class ResolveCoroutines : IVisitStatements
     {
-        public void Analyse(Ast ast)
+        class SemanticFunctionInfo
+        {
+            public bool IsCoroutine;
+        }
+
+        readonly Dictionary<string, object> _methods = new();
+
+        public ResolveCoroutines(Ast ast, Dictionary<string, MethodInfo> methods)
+        {
+            foreach (var (name, info) in methods)
+            {
+                _methods.Add(name, info);
+            }
+
+            foreach (var func in ast.Functions)
+            {
+                _methods.Add(func.Name, func);
+            }
+        }
+
+        FunctionDecl _currentFunctionDecl;
+        public void FunctionDecl(FunctionDecl functionDecl)
+        {
+            _currentFunctionDecl = functionDecl;
+        }
+
+        public void Call(Call call)
+        {
+            if (!_methods.TryGetValue(call.Name, out object info))
+                throw new Exception($"Function '{call.Name}' not found (at {call.SourceLocation})");
+
+            bool isCoroutineCall = false;
+            switch (info)
+            {
+                case MethodInfo mi:
+                    if (mi.ReturnType == typeof(IEnumerator))
+                    {
+                        isCoroutineCall = true;
+                    }
+                    break;
+
+                case FunctionDecl fd:
+                    if (fd.IsCoroutine)
+                    {
+                        isCoroutineCall = true;
+                    }
+                    break;
+
+                default:
+                    throw new Exception("case missing");
+            }
+
+            if (isCoroutineCall && !call.IsCoroutine)
+                throw new Exception($"Call to {call.Name} is coroutine but name does not start with _ (at {call.SourceLocation})");
+
+            if (!isCoroutineCall && call.IsCoroutine)
+                throw new Exception($"Call to {call.Name} is not a coroutine but name does start with _ (at {call.SourceLocation})");
+
+            if (isCoroutineCall && !_currentFunctionDecl.IsCoroutine)
+                throw new Exception($"Coroutine call to {call.Name} in non-coroutine function: add branch/race/sync (at {call.SourceLocation})");
+        }
+
+        public void EnterScope() { }
+        public void ExitScope() { }
+        public void If(If @if) { }
+        public void LocalVariableDecl(LocalVariableDecl localVariableDecl) { }
+        public void Assignment(Assignment assignment) { }
+        public void ValueExpr(ValueExpr valueExpr) { }
+        public void VariableExpr(VariableExpr variableExpr) { }
+        public void GroupingExpr(GroupingExpr groupingExpr) { }
+        public void NegateExpr(NegateExpr negateExpr) { }
+        public void CmpExpr(CmpExpr cmpExpr) { }
+        public void MulExpr(MulExpr mulExpr) { }
+        public void AddExpr(AddExpr addExpr) { }
+        public void ObjectRef(ObjectRefExpr objectRefExpr) { }
+        public void BranchExpr(BranchExpr branchExpr) { }
+    }
+
+    public static class SemanticAnalysis
+    {
+        public static void Analyse(Ast ast, Dictionary<string, MethodInfo> methods)
         {
             var resolveVariables = new ResolveVariablesVisitor();
             ast.Visit(resolveVariables);
 
             var resolveTypes = new ResolveTypes();
             ast.Visit(resolveTypes);
+
+            var resolveCoroutines = new ResolveCoroutines(ast, methods);
+            for (int i = 0; i < ast.Functions.Count; ++i) // #todo Coroutine status needs to propagate iteratively... god this is bad
+            {
+                ast.Visit(resolveCoroutines);
+            }
         }
     }
 }

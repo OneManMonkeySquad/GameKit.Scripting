@@ -1,27 +1,27 @@
 using System;
 using System.Collections.Generic;
-using GameKit.Scripting.Runtime;
 
 namespace GameKit.Scripting.Internal
 {
     public interface IVisitStatements
     {
-        void EnterScope() { }
-        void ExitScope() { }
+        void EnterScope();
+        void ExitScope();
 
-        void Call(Call call) { }
-        void If(If @if) { }
-        void LocalVariableDecl(LocalVariableDecl localVariableDecl) { }
-        void Assignment(Assignment assignment) { }
-        void FunctionDecl(FunctionDecl functionDecl) { }
-        void ValueExpr(ValueExpr valueExpr) { }
-        void VariableExpr(VariableExpr variableExpr) { }
-        void GroupingExpr(GroupingExpr groupingExpr) { }
-        void NegateExpr(NegateExpr negateExpr) { }
-        void CmpExpr(CmpExpr cmpExpr) { }
-        void MulExpr(MulExpr mulExpr) { }
-        void AddExpr(AddExpr addExpr) { }
-        void ObjectRef(ObjectRefExpr objectRefExpr) { }
+        void Call(Call call);
+        void If(If @if);
+        void LocalVariableDecl(LocalVariableDecl localVariableDecl);
+        void Assignment(Assignment assignment);
+        void FunctionDecl(FunctionDecl functionDecl);
+        void ValueExpr(ValueExpr valueExpr);
+        void VariableExpr(VariableExpr variableExpr);
+        void GroupingExpr(GroupingExpr groupingExpr);
+        void NegateExpr(NegateExpr negateExpr);
+        void CmpExpr(CmpExpr cmpExpr);
+        void MulExpr(MulExpr mulExpr);
+        void AddExpr(AddExpr addExpr);
+        void ObjectRef(ObjectRefExpr objectRefExpr);
+        void BranchExpr(BranchExpr branchExpr);
     }
 
     public struct SourceLocation
@@ -41,21 +41,19 @@ namespace GameKit.Scripting.Internal
     public abstract class Expression
     {
         public SourceLocation SourceLocation;
-        public Type ResultType;
+        public Type ResultType; // SA
 
         public abstract void Visit(IVisitStatements visitor);
 
         public abstract string ToString(string padding);
     }
 
-    public abstract class Statement : Expression
-    {
-    }
-
-    public class Call : Statement
+    public class Call : Expression
     {
         public string Name;
         public List<Expression> Arguments;
+
+        public bool IsCoroutine => Name.StartsWith("_");
 
         public override void Visit(IVisitStatements visitor)
         {
@@ -69,6 +67,10 @@ namespace GameKit.Scripting.Internal
         public override string ToString(string padding)
         {
             var str = padding + $"[Call '{Name}'] <{ResultType}>";
+            if (IsCoroutine)
+            {
+                str += " @Coroutine";
+            }
             foreach (var arg in Arguments)
             {
                 str += "\n" + arg.ToString(padding + "\t");
@@ -77,7 +79,7 @@ namespace GameKit.Scripting.Internal
         }
     }
 
-    public class If : Statement
+    public class If : Expression
     {
         public Expression Condition;
         public List<Expression> TrueStatements;
@@ -122,7 +124,7 @@ namespace GameKit.Scripting.Internal
         }
     }
 
-    public class LocalVariableDecl : Statement
+    public class LocalVariableDecl : Expression
     {
         public string VariableName;
         public Expression Value;
@@ -141,11 +143,11 @@ namespace GameKit.Scripting.Internal
         }
     }
 
-    public class Assignment : Statement
+    public class Assignment : Expression
     {
         public string VariableName;
         public Expression Value;
-        public ScopeVariableInfo ScopeInfo;
+        public ScopeVariableInfo ScopeInfo; // SA
 
         public override void Visit(IVisitStatements visitor)
         {
@@ -161,18 +163,20 @@ namespace GameKit.Scripting.Internal
         }
     }
 
-    public class FunctionDecl : Statement
+    public class FunctionDecl : Expression
     {
         public string Name;
-        public List<Expression> Statements;
+        public List<Expression> Body;
         public List<string> ParameterNames;
+
+        public bool IsCoroutine => Name.StartsWith("_");
 
         public override void Visit(IVisitStatements visitor)
         {
             visitor.EnterScope();
             visitor.FunctionDecl(this);
             visitor.EnterScope(); // Double scope here because local variables can shadow parameters, so they need their own scope
-            foreach (var stmt in Statements)
+            foreach (var stmt in Body)
             {
                 stmt.Visit(visitor);
             }
@@ -188,7 +192,11 @@ namespace GameKit.Scripting.Internal
         public override string ToString(string padding)
         {
             var str = padding + $"[DeclareFunc '{Name}' ({string.Join(',', ParameterNames)})] <{ResultType}>";
-            foreach (var stmt in Statements)
+            if (IsCoroutine)
+            {
+                str += " @Coroutine";
+            }
+            foreach (var stmt in Body)
             {
                 str += "\n" + padding + stmt.ToString(padding + "\t");
             }
@@ -280,15 +288,7 @@ namespace GameKit.Scripting.Internal
         }
     }
 
-    public enum CmpType
-    {
-        And,
-        Equal,
-        NotEqual,
-        Greater,
-        LessOrEqual
-    }
-
+    public enum CmpType { And, Equal, NotEqual, Greater, LessOrEqual }
     public class CmpExpr : BinaryExpr
     {
         public readonly CmpType Type;
@@ -313,7 +313,6 @@ namespace GameKit.Scripting.Internal
 
 
     public enum VariableSource { None, Local, Argument }
-
     public class VariableExpr : Expression
     {
         public string Name;
@@ -339,6 +338,26 @@ namespace GameKit.Scripting.Internal
         public override string ToString(string padding)
         {
             var str = padding + $"[ObjectRef '{Name}'] <{ResultType}>";
+            return str;
+        }
+    }
+
+    public class BranchExpr : Expression
+    {
+        public List<Expression> Body;
+
+        public override void Visit(IVisitStatements visitor)
+        {
+            visitor.BranchExpr(this);
+        }
+
+        public override string ToString(string padding)
+        {
+            var str = padding + $"[BranchExpr] <{ResultType}>";
+            foreach (var stmt in Body)
+            {
+                str += "\n" + padding + stmt.ToString(padding + "\t");
+            }
             return str;
         }
     }

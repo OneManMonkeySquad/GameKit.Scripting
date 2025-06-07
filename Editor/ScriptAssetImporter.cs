@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using GameKit.Scripting.Runtime;
 using UnityEditor;
 using UnityEditor.AssetImporters;
@@ -22,21 +24,25 @@ namespace GameKit.Scripting
                 ctx.SetMainObject(asset);
             }
 
-            asset.LastCompilationFailed = true;
+            asset.LastCompilationFailed = false;
 
             try
             {
-                var ast = Script.Parse(code, ctx.assetPath);
+                var methods = new Dictionary<string, MethodInfo>();
+                Script.RegisterScriptableFunctions(methods);
+
+                var ast = Script.Parse(code, ctx.assetPath, methods);
                 asset.Code = code;
                 asset.FileNameHint = ctx.assetPath;
-                asset.LastCompilationFailed = false;
 
-                var cs = Script.Compile(ast);
+                var cs = Script.CompileAst(ast, methods);
                 cs.TryExecute("on_build");
+
+                asset.LastCompilationFailed = false;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                Debug.LogError(e);
+                throw;
             }
         }
     }

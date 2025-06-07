@@ -1,6 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using GameKit.Scripting.Internal;
+using UnityEditor;
+using UnityEngine;
 
 namespace GameKit.Scripting.Runtime
 {
@@ -39,22 +43,45 @@ namespace GameKit.Scripting.Runtime
 
         public static CompiledScript Compile(string str, string fileNameHint)
         {
-            var ast = Parse(str, fileNameHint);
-            return Compile(ast);
+            var methods = new Dictionary<string, MethodInfo>();
+            RegisterScriptableFunctions(methods);
+
+            var ast = Parse(str, fileNameHint, methods);
+            return CompileAst(ast, methods);
         }
 
-        public static CompiledScript Compile(Ast ast)
+        public static Ast Parse(string str, string fileNameHint, Dictionary<string, MethodInfo> methods)
+        {
+            var parser = new Parser();
+            var ast = parser.ParseToAst(str, fileNameHint, methods);
+            return ast;
+        }
+
+        public static CompiledScript CompileAst(Ast ast, Dictionary<string, MethodInfo> methods)
         {
             var compiler = new ILCompiler();
-            var ca = compiler.Compile(ast);
+            var ca = compiler.Compile(ast, methods);
             return ca;
         }
 
-        public static Ast Parse(string str, string fileNameHint)
+        public static void RegisterScriptableFunctions(Dictionary<string, MethodInfo> methods)
         {
-            var parser = new Parser();
-            var ast = parser.ParseToAst(str, fileNameHint);
-            return ast;
+#if UNITY_EDITOR
+            var taggedMethods = TypeCache.GetMethodsWithAttribute<ScriptableAttribute>();
+            foreach (var taggedMethod in taggedMethods)
+            {
+                var name = taggedMethod.GetCustomAttribute<ScriptableAttribute>().Name;
+                if (methods.ContainsKey(name))
+                {
+                    Debug.LogError($"Multiple Scriptable methods with the same name '{name}'. This is not supported.");
+                    continue;
+                }
+
+                methods[name] = taggedMethod;
+            }
+#else
+            // #todo
+#endif
         }
     }
 }
