@@ -174,6 +174,7 @@ namespace GameKit.Scripting.Internal
                     _labels = labels;
                     _labelIdx = 0;
                     _stateField = stateField;
+                    _currentField = currentField;
 
                     moveNextIl.Ldarg(0);
                     moveNextIl.Ldfld(stateField);
@@ -194,6 +195,7 @@ namespace GameKit.Scripting.Internal
                     _labels = null;
                     _labelIdx = 0;
                     _stateField = null;
+                    _currentField = null;
 
                     File.AppendAllText("E:\\il.txt", "Coroutine:\n");
                     File.AppendAllText("E:\\il.txt", moveNextIl.GetILCode() + "\n");
@@ -217,6 +219,7 @@ namespace GameKit.Scripting.Internal
         static List<GroboIL.Label> _labels;
         static int _labelIdx;
         static FieldBuilder _stateField;
+        static FieldBuilder _currentField;
 
         void AllocateLabels(List<Expression> stmts, ref int numLabels)
         {
@@ -377,20 +380,37 @@ namespace GameKit.Scripting.Internal
                     break;
 
                 case Call call:
+                    if (call.IsCoroutine)
+                    {
+                        if (_isInCoroutineFunction)
+                        {
+                            il.Ldarg(0);
+                        }
+                    }
+
                     VisitCall(call, il, globals, localVars);
 
                     if (call.IsCoroutine)
                     {
                         if (_isInCoroutineFunction)
                         {
-                            il.Pop();
+                            globals.Methods.TryGetValue(call.Name, out MethodInfo method);
+
+                            if (method.ReturnType != typeof(IEnumerator))
+                            {
+                                il.Pop();
+                                il.Ldnull();
+                            }
+                            il.Stfld(_currentField); // Store returned IEnumerator
 
                             if (_labelIdx < _labels.Count)
                             {
+                                // Increment generator state
                                 il.Ldarg(0);
                                 il.Ldc_I4(_labelIdx);
                                 il.Stfld(_stateField);
 
+                                // return true
                                 il.Ldc_I4(1);
                                 il.Ret();
 
@@ -398,10 +418,12 @@ namespace GameKit.Scripting.Internal
                             }
                             else
                             {
+                                // Increment generator state
                                 il.Ldarg(0);
                                 il.Ldc_I4(-1);
                                 il.Stfld(_stateField);
 
+                                // return false
                                 il.Ldc_I4(0);
                                 il.Ret();
                             }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Threading.Tasks;
 using GameKit.Scripting.Runtime;
 using Unity.Collections;
 using Unity.Entities;
@@ -13,9 +12,15 @@ namespace GameKit.Scripting.Internal
     {
         public static IEnumerator Test()
         {
+            Debug.Log("11111111111");
+
+            yield return null;
+
+            Debug.Log("222222222222222");
+
             yield return new WaitForSeconds(1);
 
-            Debug.Log("OKOKOK");
+            Debug.Log("3333333333333");
         }
 
         public static object ResolveObjectRef(string name)
@@ -66,7 +71,13 @@ namespace GameKit.Scripting.Internal
         [Scriptable("_wait")]
         public static IEnumerator Wait()
         {
-            return null;
+            yield return null;
+        }
+
+        [Scriptable("_wait_for_seconds")]
+        public static IEnumerator WaitForSeconds(object time)
+        {
+            yield return new WaitForSeconds((float)time);
         }
 
         [Scriptable("float3")]
