@@ -9,8 +9,5 @@ namespace GameKit.Scripting.Runtime
         public string Code;
         public string FileNameHint;
         public bool LastCompilationFailed;
-
-        public List<string> PropertyNames;
-        public List<string> PropertyTypeNames;
     }
 }
