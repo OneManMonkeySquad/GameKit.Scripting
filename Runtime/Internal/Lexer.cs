@@ -23,6 +23,7 @@ namespace GameKit.Scripting.Internal
         If, // if
         Else, // else
         Branch, // branch
+        Sync, // sync
 
         CmpEq, // ==
         CmpNEq, // !=
@@ -72,6 +73,7 @@ namespace GameKit.Scripting.Internal
             TokenKind.If => "if",
             TokenKind.Else => "else",
             TokenKind.Branch => "branch",
+            TokenKind.Sync => "sync",
             TokenKind.CmpGt => ">",
             TokenKind.CmpLEq => "<=",
             TokenKind.CmpEq => "==",
@@ -286,6 +288,10 @@ namespace GameKit.Scripting.Internal
             {
                 tokens.Add(new Token { Kind = TokenKind.Branch, SourceLoc = sourceLoc });
             }
+            else if (content == "sync")
+            {
+                tokens.Add(new Token { Kind = TokenKind.Sync, SourceLoc = sourceLoc });
+            }
             else if (content == "null")
             {
                 tokens.Add(new Token { Kind = TokenKind.Null, SourceLoc = sourceLoc });
@@ -354,7 +360,7 @@ namespace GameKit.Scripting.Internal
         {
             var tk = _tokens[_currentTokenIdx];
             if (tk.Kind != kind)
-                throw new System.Exception($"Expected {(what != null ? $"({what}) " : "")}{Token.TokenTypeToString(kind)} got {tk} (at {tk.SourceLoc})");
+                throw new System.Exception($"Expected {(what != null ? $"({what}) " : "")}{Token.TokenTypeToString(kind)} got '{tk}' (at {tk.SourceLoc})");
 
             ++_currentTokenIdx;
             return tk;

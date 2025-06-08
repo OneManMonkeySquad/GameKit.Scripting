@@ -10,17 +10,14 @@ namespace GameKit.Scripting.Internal
 {
     public static class Buildin
     {
-        public static IEnumerator Test()
+        public static void Test()
         {
-            Debug.Log("11111111111");
+            Test123(StartCoroutine(null), StartCoroutine(null));
+        }
 
-            yield return null;
-
-            Debug.Log("222222222222222");
-
-            yield return new WaitForSeconds(1);
-
-            Debug.Log("3333333333333");
+        public static void Test123(params object[] ints)
+        {
+            Debug.Log(ints);
         }
 
         public static object ResolveObjectRef(string name)
@@ -63,8 +60,17 @@ namespace GameKit.Scripting.Internal
 
         public static object StartCoroutine(object e)
         {
-            Debug.Log("Buildin.StartCoroutine " + e);
             NamedScriptableObjects.Instance.StartCoroutine((IEnumerator)e);
+            return null;
+        }
+
+        public static IEnumerator WaitAll(params IEnumerator[] coroutines)
+        {
+            return null;
+        }
+
+        public static IEnumerator WaitAny(params IEnumerator[] coroutines)
+        {
             return null;
         }
 

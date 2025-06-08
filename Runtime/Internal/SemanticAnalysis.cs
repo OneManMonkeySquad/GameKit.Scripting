@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
+using Unity.Collections;
 
 namespace GameKit.Scripting.Internal
 {
@@ -108,6 +109,7 @@ namespace GameKit.Scripting.Internal
         public void AddExpr(AddExpr addExpr) { }
         public void ObjectRef(ObjectRefExpr objectRefExpr) { }
         public void BranchExpr(BranchExpr branchExpr) { }
+        public void SyncExpr(SyncExpr syncExpr) { }
     }
 
 
@@ -216,18 +218,25 @@ namespace GameKit.Scripting.Internal
             branchExpr.ResultType = typeof(object);
         }
 
+        public void SyncExpr(SyncExpr syncExpr)
+        {
+            syncExpr.ResultType = typeof(object);
+        }
+
         public void EnterScope() { }
         public void ExitScope() { }
     }
 
     class ResolveCoroutines : IVisitStatements
     {
-        class SemanticFunctionInfo
+        class ScopeInfo
         {
-            public bool IsCoroutine;
+            public bool IsBranch;
+            public bool IsSync;
         }
 
         readonly Dictionary<string, object> _methods = new();
+        readonly List<ScopeInfo> _scopeStack = new();
 
         public ResolveCoroutines(Ast ast, Dictionary<string, MethodInfo> methods)
         {
@@ -280,12 +289,47 @@ namespace GameKit.Scripting.Internal
             if (!isCoroutineCall && call.IsCoroutine)
                 throw new Exception($"Call to {call.Name} is not a coroutine but name does start with _ (at {call.SourceLocation})");
 
-            if (isCoroutineCall && !_currentFunctionDecl.IsCoroutine)
-                throw new Exception($"Coroutine call to {call.Name} in non-coroutine function: add branch/race/sync (at {call.SourceLocation})");
+            if (!_currentFunctionDecl.IsCoroutine)
+            {
+                if (isCoroutineCall && !_scopeStack[^1].IsBranch)
+                    throw new Exception($"Coroutine call to {call.Name} in non-coroutine function: add branch (at {call.SourceLocation})");
+            }
+
+            if (isCoroutineCall)
+            {
+                if (_scopeStack[^1].IsBranch) // #todo maybe need to recurse, might not be the top stack
+                {
+                    call.IsBranch = true;
+                }
+                if (_scopeStack[^1].IsSync) // #todo maybe need to recurse, might not be the top stack
+                {
+                    call.IsSync = true;
+                }
+            }
         }
 
-        public void EnterScope() { }
-        public void ExitScope() { }
+        public void SyncExpr(SyncExpr syncExpr)
+        {
+            if (!_currentFunctionDecl.IsCoroutine)
+                throw new Exception($"sync is only allowed in coroutine (at {syncExpr.SourceLocation})");
+
+            _scopeStack[^1].IsSync = true;
+        }
+
+        public void BranchExpr(BranchExpr branchExpr)
+        {
+            _scopeStack[^1].IsBranch = true;
+        }
+
+        public void EnterScope()
+        {
+            _scopeStack.Add(new());
+        }
+        public void ExitScope()
+        {
+            _scopeStack.RemoveAt(_scopeStack.Count - 1);
+        }
+
         public void If(If @if) { }
         public void LocalVariableDecl(LocalVariableDecl localVariableDecl) { }
         public void Assignment(Assignment assignment) { }
@@ -297,7 +341,6 @@ namespace GameKit.Scripting.Internal
         public void MulExpr(MulExpr mulExpr) { }
         public void AddExpr(AddExpr addExpr) { }
         public void ObjectRef(ObjectRefExpr objectRefExpr) { }
-        public void BranchExpr(BranchExpr branchExpr) { }
     }
 
     public static class SemanticAnalysis

@@ -76,10 +76,19 @@ namespace GameKit.Scripting.Internal
             if (_lexer.Peek(TokenKind.Branch))
             {
                 var tk = _lexer.Consume();
-
                 var statements = ParseBlock();
-
                 return new BranchExpr
+                {
+                    Body = statements,
+                    SourceLocation = tk.SourceLoc
+                };
+            }
+
+            if (_lexer.Peek(TokenKind.Sync))
+            {
+                var tk = _lexer.Consume();
+                var statements = ParseBlock();
+                return new SyncExpr
                 {
                     Body = statements,
                     SourceLocation = tk.SourceLoc

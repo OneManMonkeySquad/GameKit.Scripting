@@ -22,6 +22,7 @@ namespace GameKit.Scripting.Internal
         void AddExpr(AddExpr addExpr);
         void ObjectRef(ObjectRefExpr objectRefExpr);
         void BranchExpr(BranchExpr branchExpr);
+        void SyncExpr(SyncExpr syncExpr);
     }
 
     public struct SourceLocation
@@ -52,8 +53,10 @@ namespace GameKit.Scripting.Internal
     {
         public string Name;
         public List<Expression> Arguments;
-
         public bool IsCoroutine => Name.StartsWith("_");
+
+        public bool IsBranch; // SA
+        public bool IsSync; // SA
 
         public override void Visit(IVisitStatements visitor)
         {
@@ -198,7 +201,7 @@ namespace GameKit.Scripting.Internal
             }
             foreach (var stmt in Body)
             {
-                str += "\n" + padding + stmt.ToString(padding + "\t");
+                str += "\n" + stmt.ToString(padding + "\t");
             }
             return str;
         }
@@ -348,7 +351,13 @@ namespace GameKit.Scripting.Internal
 
         public override void Visit(IVisitStatements visitor)
         {
+            visitor.EnterScope();
             visitor.BranchExpr(this);
+            foreach (var stmt in Body)
+            {
+                stmt.Visit(visitor);
+            }
+            visitor.ExitScope();
         }
 
         public override string ToString(string padding)
@@ -356,7 +365,33 @@ namespace GameKit.Scripting.Internal
             var str = padding + $"[BranchExpr] <{ResultType}>";
             foreach (var stmt in Body)
             {
-                str += "\n" + padding + stmt.ToString(padding + "\t");
+                str += "\n" + stmt.ToString(padding + "\t");
+            }
+            return str;
+        }
+    }
+
+    public class SyncExpr : Expression
+    {
+        public List<Expression> Body;
+
+        public override void Visit(IVisitStatements visitor)
+        {
+            visitor.EnterScope();
+            visitor.SyncExpr(this);
+            foreach (var stmt in Body)
+            {
+                stmt.Visit(visitor);
+            }
+            visitor.ExitScope();
+        }
+
+        public override string ToString(string padding)
+        {
+            var str = padding + $"[SyncExpr] <{ResultType}>";
+            foreach (var stmt in Body)
+            {
+                str += "\n" + stmt.ToString(padding + "\t");
             }
             return str;
         }

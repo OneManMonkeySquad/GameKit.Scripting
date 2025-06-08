@@ -6,9 +6,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using GameKit.Scripting.Runtime;
 using GrEmit;
-using NUnit.Framework;
-using UnityEditor;
-using UnityEngine;
+using Unity.Assertions;
 
 namespace GameKit.Scripting.Internal
 {
@@ -104,7 +102,7 @@ namespace GameKit.Scripting.Internal
                 EmitBodyIL(func.Body, il, globals, localVars);
                 il.Ret();
 
-                File.AppendAllText("E:\\il.txt", il.GetILCode() + "\n");
+                File.AppendAllText("E:\\il.txt", il.GetILCode() + "\n\n");
             }
             else
             {
@@ -197,7 +195,7 @@ namespace GameKit.Scripting.Internal
                     _stateField = null;
                     _currentField = null;
 
-                    File.AppendAllText("E:\\il.txt", "Coroutine:\n");
+                    File.AppendAllText("E:\\il.txt", "= Coroutine =\n");
                     File.AppendAllText("E:\\il.txt", moveNextIl.GetILCode() + "\n");
                 }
 
@@ -211,8 +209,8 @@ namespace GameKit.Scripting.Internal
                 il.Newobj(smType.GetConstructor(new[] { typeof(int) }));
                 il.Ret();
 
-                File.AppendAllText("E:\\il.txt", "Method:\n");
-                File.AppendAllText("E:\\il.txt", il.GetILCode() + "\n");
+                File.AppendAllText("E:\\il.txt", "= Method =\n");
+                File.AppendAllText("E:\\il.txt", il.GetILCode() + "\n\n");
             }
         }
 
@@ -380,7 +378,7 @@ namespace GameKit.Scripting.Internal
                     break;
 
                 case Call call:
-                    if (call.IsCoroutine)
+                    if (!call.IsBranch && call.IsCoroutine)
                     {
                         if (_isInCoroutineFunction)
                         {
@@ -390,51 +388,50 @@ namespace GameKit.Scripting.Internal
 
                     VisitCall(call, il, globals, localVars);
 
-                    if (call.IsCoroutine)
+                    if (call.IsBranch)
                     {
-                        if (_isInCoroutineFunction)
+                        il.Call(typeof(Buildin).GetMethod("StartCoroutine"));
+                    }
+
+                    if (!call.IsBranch && call.IsCoroutine)
+                    {
+                        Assert.IsTrue(_isInCoroutineFunction);
+
+                        // globals.Methods.TryGetValue(call.Name, out MethodInfo method);
+
+                        // if (method.ReturnType != typeof(IEnumerator))
+                        // {
+                        //     il.Pop();
+                        //     il.Ldnull();
+                        // }
+                        il.Stfld(_currentField); // Store returned IEnumerator
+
+                        if (_labelIdx < _labels.Count)
                         {
-                            globals.Methods.TryGetValue(call.Name, out MethodInfo method);
+                            // Increment generator state
+                            il.Ldarg(0);
+                            il.Ldc_I4(_labelIdx);
+                            il.Stfld(_stateField);
 
-                            if (method.ReturnType != typeof(IEnumerator))
-                            {
-                                il.Pop();
-                                il.Ldnull();
-                            }
-                            il.Stfld(_currentField); // Store returned IEnumerator
+                            // return true
+                            il.Ldc_I4(1);
+                            il.Ret();
 
-                            if (_labelIdx < _labels.Count)
-                            {
-                                // Increment generator state
-                                il.Ldarg(0);
-                                il.Ldc_I4(_labelIdx);
-                                il.Stfld(_stateField);
-
-                                // return true
-                                il.Ldc_I4(1);
-                                il.Ret();
-
-                                il.MarkLabel(_labels[_labelIdx++]);
-                            }
-                            else
-                            {
-                                // Increment generator state
-                                il.Ldarg(0);
-                                il.Ldc_I4(-1);
-                                il.Stfld(_stateField);
-
-                                // return false
-                                il.Ldc_I4(0);
-                                il.Ret();
-                            }
-
-                            il.Ldc_I4(1337); // #todo Push dummy value that can be popped by EmitBodyIL...
+                            il.MarkLabel(_labels[_labelIdx++]);
                         }
                         else
                         {
-                            // #todo switch dispatch depending on branch/sync/race block
-                            il.Call(typeof(Buildin).GetMethod("StartCoroutine"));
+                            // Increment generator state
+                            il.Ldarg(0);
+                            il.Ldc_I4(-1);
+                            il.Stfld(_stateField);
+
+                            // return false
+                            il.Ldc_I4(0);
+                            il.Ret();
                         }
+
+                        il.Ldc_I4(1337); // #todo Push dummy value that can be popped by EmitBodyIL...
                     }
                     break;
 
@@ -480,6 +477,10 @@ namespace GameKit.Scripting.Internal
 
                 case BranchExpr branch:
                     EmitBodyIL(branch.Body, il, globals, localVars);
+                    break;
+
+                case SyncExpr sync:
+                    EmitBodyIL(sync.Body, il, globals, localVars);
                     break;
 
                 default:
