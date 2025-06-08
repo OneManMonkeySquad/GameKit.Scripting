@@ -319,16 +319,18 @@ namespace GameKit.Scripting.Internal
                     }
                     break;
 
-                case AddExpr var:
+                case MathExpr var:
                     VisitExpression(var.Left, il, globals, localVars);
                     VisitExpression(var.Right, il, globals, localVars);
-                    il.Call(typeof(Buildin).GetMethod("Add"));
-                    break;
-
-                case MulExpr var:
-                    VisitExpression(var.Left, il, globals, localVars);
-                    VisitExpression(var.Right, il, globals, localVars);
-                    il.Call(typeof(Buildin).GetMethod("Mul"));
+                    switch (var.Type)
+                    {
+                        case MathType.Add:
+                            il.Call(typeof(Buildin).GetMethod("Add"));
+                            break;
+                        case MathType.Mul:
+                            il.Call(typeof(Buildin).GetMethod("Mul"));
+                            break;
+                    }
                     break;
 
                 case CmpExpr cmp:

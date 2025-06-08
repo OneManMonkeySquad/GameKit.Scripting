@@ -18,8 +18,7 @@ namespace GameKit.Scripting.Internal
         void GroupingExpr(GroupingExpr groupingExpr);
         void NegateExpr(NegateExpr negateExpr);
         void CmpExpr(CmpExpr cmpExpr);
-        void MulExpr(MulExpr mulExpr);
-        void AddExpr(AddExpr addExpr);
+        void MathExpr(MathExpr addExpr);
         void ObjectRef(ObjectRefExpr objectRefExpr);
         void BranchExpr(BranchExpr branchExpr);
         void SyncExpr(SyncExpr syncExpr);
@@ -269,33 +268,27 @@ namespace GameKit.Scripting.Internal
         public Expression Left, Right;
     }
 
-    public class AddExpr : BinaryExpr
+    public enum MathType { Add, Mul }
+
+    public class MathExpr : BinaryExpr
     {
+        public readonly MathType Type;
+
+        public MathExpr(MathType type)
+        {
+            Type = type;
+        }
+
         public override void Visit(IVisitStatements visitor)
         {
-            visitor.AddExpr(this);
+            visitor.MathExpr(this);
             Left.Visit(visitor);
             Right.Visit(visitor);
         }
 
         public override string ToString(string padding)
         {
-            return padding + $"[Add] <{ResultType}>\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
-        }
-    }
-
-    public class MulExpr : BinaryExpr
-    {
-        public override void Visit(IVisitStatements visitor)
-        {
-            visitor.MulExpr(this);
-            Left.Visit(visitor);
-            Right.Visit(visitor);
-        }
-
-        public override string ToString(string padding)
-        {
-            return padding + $"[Mul] <{ResultType}>\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
+            return padding + $"[{Type}] <{ResultType}>\n" + Left.ToString(padding + "\t") + "\n" + Right.ToString(padding + "\t");
         }
     }
 

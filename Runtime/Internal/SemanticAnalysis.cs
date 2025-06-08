@@ -105,8 +105,7 @@ namespace GameKit.Scripting.Internal
         public void GroupingExpr(GroupingExpr groupingExpr) { }
         public void NegateExpr(NegateExpr negateExpr) { }
         public void CmpExpr(CmpExpr cmpExpr) { }
-        public void MulExpr(MulExpr mulExpr) { }
-        public void AddExpr(AddExpr addExpr) { }
+        public void MathExpr(MathExpr mulExpr) { }
         public void ObjectRef(ObjectRefExpr objectRefExpr) { }
         public void BranchExpr(BranchExpr branchExpr) { }
         public void SyncExpr(SyncExpr syncExpr) { }
@@ -125,14 +124,9 @@ namespace GameKit.Scripting.Internal
             cmpExpr.ResultType = typeof(bool);
         }
 
-        public void MulExpr(MulExpr mulExpr)
+        public void MathExpr(MathExpr expr)
         {
-            mulExpr.ResultType = typeof(object); // #todo
-        }
-
-        public void AddExpr(AddExpr addExpr)
-        {
-            addExpr.ResultType = typeof(object); // #todo
+            expr.ResultType = typeof(object); // #todo
         }
 
         public void Call(Call call)
@@ -338,8 +332,7 @@ namespace GameKit.Scripting.Internal
         public void GroupingExpr(GroupingExpr groupingExpr) { }
         public void NegateExpr(NegateExpr negateExpr) { }
         public void CmpExpr(CmpExpr cmpExpr) { }
-        public void MulExpr(MulExpr mulExpr) { }
-        public void AddExpr(AddExpr addExpr) { }
+        public void MathExpr(MathExpr mathExpr) { }
         public void ObjectRef(ObjectRefExpr objectRefExpr) { }
     }
 

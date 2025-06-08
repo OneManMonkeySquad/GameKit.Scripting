@@ -300,7 +300,7 @@ namespace GameKit.Scripting.Internal
                 _lexer.Accept(TokenKind.Plus);
 
                 var right = ParseTerm();
-                left = new AddExpr { Left = left, Right = right, SourceLocation = left.SourceLocation };
+                left = new MathExpr(MathType.Add) { Left = left, Right = right, SourceLocation = left.SourceLocation };
             }
 
             return left;
@@ -318,7 +318,7 @@ namespace GameKit.Scripting.Internal
                 _lexer.Accept(TokenKind.Star);
 
                 var right = ParseUnary();
-                left = new MulExpr { Left = left, Right = right, SourceLocation = left.SourceLocation };
+                left = new MathExpr(MathType.Mul) { Left = left, Right = right, SourceLocation = left.SourceLocation };
             }
 
             return left;
