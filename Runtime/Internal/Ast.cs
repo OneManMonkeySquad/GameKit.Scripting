@@ -70,6 +70,14 @@ namespace GameKit.Scripting.Internal
         public override string ToString(string padding)
         {
             var str = padding + $"[Call '{Name}'] <{ResultType}>";
+            if (IsBranch)
+            {
+                str += " @Branch";
+            }
+            if (IsSync)
+            {
+                str += " @Sync";
+            }
             if (IsCoroutine)
             {
                 str += " @Coroutine";

@@ -10,16 +10,6 @@ namespace GameKit.Scripting.Internal
 {
     public static class Buildin
     {
-        public static void Test()
-        {
-            Test123(StartCoroutine(null), StartCoroutine(null));
-        }
-
-        public static void Test123(params object[] ints)
-        {
-            Debug.Log(ints);
-        }
-
         public static object ResolveObjectRef(string name)
         {
             {
@@ -64,14 +54,18 @@ namespace GameKit.Scripting.Internal
             return null;
         }
 
-        public static IEnumerator WaitAll(params IEnumerator[] coroutines)
+        public static IEnumerator WaitAll(object[] yieldables)
         {
-            return null;
-        }
+            var coroutines = new Coroutine[yieldables.Length];
+            for (int i = 0; i < coroutines.Length; i++)
+            {
+                coroutines[i] = NamedScriptableObjects.Instance.StartCoroutine((IEnumerator)yieldables[i]);
+            }
 
-        public static IEnumerator WaitAny(params IEnumerator[] coroutines)
-        {
-            return null;
+            foreach (var coroutine in coroutines)
+            {
+                yield return coroutine;
+            }
         }
 
         [Scriptable("_wait")]
@@ -83,6 +77,8 @@ namespace GameKit.Scripting.Internal
         [Scriptable("_wait_for_seconds")]
         public static IEnumerator WaitForSeconds(object time)
         {
+            Debug.Log("WaitForSeconds " + time);
+
             yield return new WaitForSeconds((float)time);
         }
 

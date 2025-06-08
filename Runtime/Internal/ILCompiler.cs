@@ -106,6 +106,8 @@ namespace GameKit.Scripting.Internal
             }
             else
             {
+                // Function is coroutine, setup statemachine struct
+
                 var stateMachineBuilder = typeBuilder.DefineNestedType(func.Name + "CoroutineStateMachine", TypeAttributes.NestedPrivate | TypeAttributes.Sealed);
                 stateMachineBuilder.AddInterfaceImplementation(typeof(IEnumerator));
                 stateMachineBuilder.AddInterfaceImplementation(typeof(IDisposable));
@@ -157,8 +159,8 @@ namespace GameKit.Scripting.Internal
                 {
                     var moveNextIl = new GroboIL(moveNext);
 
-                    int numLabels = 1; // First label is start
-                    AllocateLabels(func.Body, ref numLabels);
+                    int numLabels = CountCoroutineCalls(func.Body);
+                    ++numLabels; // First label is start
 
                     var labels = new List<GroboIL.Label>();
                     for (int i = 0; i < numLabels; ++i)
@@ -179,7 +181,8 @@ namespace GameKit.Scripting.Internal
                     moveNextIl.Switch(labels.ToArray());
                     moveNextIl.Br(labelEnd);
 
-                    moveNextIl.MarkLabel(labels[_labelIdx++]);
+                    moveNextIl.MarkLabel(labels[_labelIdx++]); // Start label
+
                     EmitBodyIL(func.Body, moveNextIl, globals, localVars);
 
                     moveNextIl.Pop();
@@ -218,28 +221,7 @@ namespace GameKit.Scripting.Internal
         static int _labelIdx;
         static FieldBuilder _stateField;
         static FieldBuilder _currentField;
-
-        void AllocateLabels(List<Expression> stmts, ref int numLabels)
-        {
-            for (int i = 0; i < stmts.Count; i++)
-            {
-                Expression stmt = stmts[i];
-                AllocateLabels(stmt, ref numLabels);
-            }
-        }
-
-        void AllocateLabels(Expression expr, ref int numLabels)
-        {
-            switch (expr)
-            {
-                case Call call:
-                    if (call.IsCoroutine)
-                    {
-                        ++numLabels;
-                    }
-                    break;
-            }
-        }
+        static int _syncStoreIdx;
 
         void EmitBodyIL(List<Expression> stmts, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
         {
@@ -378,61 +360,7 @@ namespace GameKit.Scripting.Internal
                     break;
 
                 case Call call:
-                    if (!call.IsBranch && call.IsCoroutine)
-                    {
-                        if (_isInCoroutineFunction)
-                        {
-                            il.Ldarg(0);
-                        }
-                    }
-
                     VisitCall(call, il, globals, localVars);
-
-                    if (call.IsBranch)
-                    {
-                        il.Call(typeof(Buildin).GetMethod("StartCoroutine"));
-                    }
-
-                    if (!call.IsBranch && call.IsCoroutine)
-                    {
-                        Assert.IsTrue(_isInCoroutineFunction);
-
-                        // globals.Methods.TryGetValue(call.Name, out MethodInfo method);
-
-                        // if (method.ReturnType != typeof(IEnumerator))
-                        // {
-                        //     il.Pop();
-                        //     il.Ldnull();
-                        // }
-                        il.Stfld(_currentField); // Store returned IEnumerator
-
-                        if (_labelIdx < _labels.Count)
-                        {
-                            // Increment generator state
-                            il.Ldarg(0);
-                            il.Ldc_I4(_labelIdx);
-                            il.Stfld(_stateField);
-
-                            // return true
-                            il.Ldc_I4(1);
-                            il.Ret();
-
-                            il.MarkLabel(_labels[_labelIdx++]);
-                        }
-                        else
-                        {
-                            // Increment generator state
-                            il.Ldarg(0);
-                            il.Ldc_I4(-1);
-                            il.Stfld(_stateField);
-
-                            // return false
-                            il.Ldc_I4(0);
-                            il.Ret();
-                        }
-
-                        il.Ldc_I4(1337); // #todo Push dummy value that can be popped by EmitBodyIL...
-                    }
                     break;
 
                 case GroupingExpr group:
@@ -480,7 +408,54 @@ namespace GameKit.Scripting.Internal
                     break;
 
                 case SyncExpr sync:
-                    EmitBodyIL(sync.Body, il, globals, localVars);
+                    _syncStoreIdx = 0;
+
+                    il.Ldarg(0); // this for Stfld(_currentField)
+
+                    {
+                        var numCoroCalls = CountCoroutineCalls(sync.Body);
+                        il.Ldc_I4(numCoroCalls);
+                        il.Newarr(typeof(object));
+
+                        {
+                            EmitBodyIL(sync.Body, il, globals, localVars);
+                            il.Pop();
+                        }
+
+                        il.Call(typeof(Buildin).GetMethod("WaitAll"));
+                    }
+
+                    //
+                    Assert.IsTrue(_isInCoroutineFunction);
+
+                    il.Stfld(_currentField); // Store returned IEnumerator
+
+                    if (_labelIdx < _labels.Count)
+                    {
+                        // Increment generator state
+                        il.Ldarg(0);
+                        il.Ldc_I4(_labelIdx);
+                        il.Stfld(_stateField);
+
+                        // return true
+                        il.Ldc_I4(1);
+                        il.Ret();
+
+                        il.MarkLabel(_labels[_labelIdx++]);
+                    }
+                    else
+                    {
+                        // Increment generator state
+                        il.Ldarg(0);
+                        il.Ldc_I4(-1);
+                        il.Stfld(_stateField);
+
+                        // return false
+                        il.Ldc_I4(0);
+                        il.Ret();
+                    }
+
+                    il.Ldc_I4(1337); // #todo Push dummy value that can be popped by EmitBodyIL...
                     break;
 
                 default:
@@ -488,10 +463,32 @@ namespace GameKit.Scripting.Internal
             }
         }
 
+        void EmitCoroutineStateUpdate()
+        {
+
+        }
+
         void VisitCall(Call call, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
         {
             if (!globals.Methods.TryGetValue(call.Name, out MethodInfo method))
                 throw new Exception($"Function '{call.Name}' not found (at {call.SourceLocation})");
+
+            if (call.IsCoroutine)
+            {
+                if (call.IsSync)
+                {
+                    il.Dup();
+                    il.Ldc_I4(_syncStoreIdx++);
+                }
+
+                if (!call.IsSync && !call.IsBranch)
+                {
+                    if (_isInCoroutineFunction)
+                    {
+                        il.Ldarg(0); // this for Stfld(_currentField)
+                    }
+                }
+            }
 
             for (int i = 0; i < call.Arguments.Count; i++)
             {
@@ -506,6 +503,73 @@ namespace GameKit.Scripting.Internal
             {
                 il.Ldnull();
             }
+
+            if (call.IsCoroutine)
+            {
+                if (call.IsBranch)
+                {
+                    il.Call(typeof(Buildin).GetMethod("StartCoroutine"));
+                }
+
+                if (call.IsSync)
+                {
+                    il.Stelem(typeof(object)); // Store coroutine in WaitAll array
+
+                    il.Ldc_I4(1337); // #todo Push dummy value that can be popped by EmitBodyIL...
+                }
+
+                if (!call.IsSync && !call.IsBranch)
+                {
+                    Assert.IsTrue(_isInCoroutineFunction);
+
+                    il.Stfld(_currentField); // Store returned IEnumerator
+
+                    if (_labelIdx < _labels.Count)
+                    {
+                        // Increment generator state
+                        il.Ldarg(0);
+                        il.Ldc_I4(_labelIdx);
+                        il.Stfld(_stateField);
+
+                        // return true
+                        il.Ldc_I4(1);
+                        il.Ret();
+
+                        il.MarkLabel(_labels[_labelIdx++]);
+                    }
+                    else
+                    {
+                        // Increment generator state
+                        il.Ldarg(0);
+                        il.Ldc_I4(-1);
+                        il.Stfld(_stateField);
+
+                        // return false
+                        il.Ldc_I4(0);
+                        il.Ret();
+                    }
+
+                    il.Ldc_I4(1337); // #todo Push dummy value that can be popped by EmitBodyIL...
+                }
+            }
+        }
+
+        int CountCoroutineCalls(List<Expression> stmts)
+        {
+            int numCoroCalls = 0;
+            for (int i = 0; i < stmts.Count; i++)
+            {
+                Expression stmt = stmts[i];
+                if (stmt is Call call && call.IsCoroutine)
+                {
+                    ++numCoroCalls;
+                }
+                if (stmt is SyncExpr)
+                {
+                    ++numCoroCalls;
+                }
+            }
+            return numCoroCalls;
         }
     }
 }
