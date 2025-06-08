@@ -348,8 +348,14 @@ namespace GameKit.Scripting.Internal
                         case CmpType.Greater:
                             il.Call(typeof(Buildin).GetMethod("Greater"));
                             break;
+                        case CmpType.Less:
+                            il.Call(typeof(Buildin).GetMethod("Less"));
+                            break;
                         case CmpType.LessOrEqual:
                             il.Call(typeof(Buildin).GetMethod("LEqual"));
+                            break;
+                        case CmpType.GreaterOrEqual:
+                            il.Call(typeof(Buildin).GetMethod("GEqual"));
                             break;
                     }
                     break;

@@ -193,12 +193,30 @@ namespace GameKit.Scripting.Internal
             };
         }
 
+        public static object Less(object left, object right)
+        {
+            return (left, right) switch
+            {
+                (int l, int r) => l < r,
+                _ => throw new Exception("Unexpected types for Less " + (left.GetType(), right.GetType())),
+            };
+        }
+
         public static object LEqual(object left, object right)
         {
             return (left, right) switch
             {
                 (int l, int r) => l <= r,
                 _ => throw new Exception("Unexpected types for LEqual " + (left.GetType(), right.GetType())),
+            };
+        }
+
+        public static object GEqual(object left, object right)
+        {
+            return (left, right) switch
+            {
+                (int l, int r) => l >= r,
+                _ => throw new Exception("Unexpected types for GEqual " + (left.GetType(), right.GetType())),
             };
         }
 

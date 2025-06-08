@@ -256,7 +256,7 @@ namespace GameKit.Scripting.Internal
         }
 
         /// <summary>
-        /// PlusMinus {( ">" | "<=" ) PlusMinus}
+        /// PlusMinus {( ">" | "<" | "<=" | ">=" ) PlusMinus}
         /// </summary>
         Expression ParseRelational()
         {
@@ -272,8 +272,14 @@ namespace GameKit.Scripting.Internal
                     case TokenKind.CmpGt:
                         left = new CmpExpr(CmpType.Greater) { Left = left, Right = right, SourceLocation = left.SourceLocation };
                         break;
+                    case TokenKind.CmpLt:
+                        left = new CmpExpr(CmpType.Less) { Left = left, Right = right, SourceLocation = left.SourceLocation };
+                        break;
                     case TokenKind.CmpLEq:
                         left = new CmpExpr(CmpType.LessOrEqual) { Left = left, Right = right, SourceLocation = left.SourceLocation };
+                        break;
+                    case TokenKind.CmpGEq:
+                        left = new CmpExpr(CmpType.GreaterOrEqual) { Left = left, Right = right, SourceLocation = left.SourceLocation };
                         break;
                 }
 

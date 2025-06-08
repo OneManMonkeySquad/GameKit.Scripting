@@ -299,7 +299,7 @@ namespace GameKit.Scripting.Internal
         }
     }
 
-    public enum CmpType { And, Equal, NotEqual, Greater, LessOrEqual }
+    public enum CmpType { And, Equal, NotEqual, Greater, Less, LessOrEqual, GreaterOrEqual }
     public class CmpExpr : BinaryExpr
     {
         public readonly CmpType Type;

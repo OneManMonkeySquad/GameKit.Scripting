@@ -28,7 +28,9 @@ namespace GameKit.Scripting.Internal
         CmpEq, // ==
         CmpNEq, // !=
         CmpGt, // >
+        CmpLt, // <
         CmpLEq, // <=
+        CmpGEq, // >=
         CmpAnd, // &&
 
         Null, // null
@@ -75,7 +77,9 @@ namespace GameKit.Scripting.Internal
             TokenKind.Branch => "branch",
             TokenKind.Sync => "sync",
             TokenKind.CmpGt => ">",
+            TokenKind.CmpLt => "<",
             TokenKind.CmpLEq => "<=",
+            TokenKind.CmpGEq => ">=",
             TokenKind.CmpEq => "==",
             TokenKind.CmpNEq => "!=",
             TokenKind.CmpAnd => "&&",
@@ -183,13 +187,22 @@ namespace GameKit.Scripting.Internal
                         ++i;
                         lastI = i + 1;
                     }
+                    else if (c == '>' && c2 == '=')
+                    {
+                        AddNonTerminal(result, code[lastI..i], sourceLoc);
+
+                        result.Add(new Token { Kind = TokenKind.CmpGEq, SourceLoc = sourceLoc });
+
+                        ++i;
+                        lastI = i + 1;
+                    }
                     // Delimiter?
                     else if (c == ' ' || c == '\n'
                         || c == '(' || c == ')'
                         || c == '{' || c == '}'
                         || c == ';' || c == ',' || c == '=' || c == '"'
                         || c == '+' || c == '-' || c == '*' || c == '>'
-                        || c == ':' || c == '@')
+                         || c == '<' || c == ':' || c == '@')
                     {
                         AddNonTerminal(result, code[lastI..i], sourceLoc);
 
@@ -260,6 +273,7 @@ namespace GameKit.Scripting.Internal
                 '-' => TokenKind.Minus,
                 '*' => TokenKind.Star,
                 '>' => TokenKind.CmpGt,
+                '<' => TokenKind.CmpLt,
                 ':' => TokenKind.Colon,
                 '@' => TokenKind.At,
                 _ => throw new System.Exception("Todo"),
