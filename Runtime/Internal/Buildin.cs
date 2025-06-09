@@ -8,8 +8,15 @@ using UnityEngine;
 
 namespace GameKit.Scripting.Internal
 {
+    public interface IResolveObjectRef
+    {
+        object Resolve(string name);
+    }
+
     public static class Buildin
     {
+        public static IResolveObjectRef ResolveObjectRefInstance;
+
         public static object ResolveObjectRef(string name)
         {
             {
@@ -35,13 +42,11 @@ namespace GameKit.Scripting.Internal
             }
 
             {
-                if (NamedScriptableObjects.Instance != null)
+                if (ResolveObjectRefInstance != null)
                 {
-                    foreach (var so in NamedScriptableObjects.Instance.Foo)
-                    {
-                        if (so.name == name)
-                            return so;
-                    }
+                    var obj = ResolveObjectRefInstance.Resolve(name);
+                    if (obj != null)
+                        return obj;
                 }
             }
 
@@ -106,7 +111,7 @@ namespace GameKit.Scripting.Internal
                 Entity e => e.ToString(),
                 string s => s,
                 null => "null",
-                _ => throw new Exception("Todo ToString"),
+                _ => throw new Exception("Todo ToString "),
             };
 
             Debug.Log(str);
