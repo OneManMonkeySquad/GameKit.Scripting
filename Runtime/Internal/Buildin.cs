@@ -50,7 +50,7 @@ namespace GameKit.Scripting.Internal
 
         public static object StartCoroutine(object e)
         {
-            NamedScriptableObjects.Instance.StartCoroutine((IEnumerator)e);
+            CoroutineRunner.Instance.StartCoroutine((IEnumerator)e);
             return null;
         }
 
@@ -59,7 +59,7 @@ namespace GameKit.Scripting.Internal
             var coroutines = new Coroutine[yieldables.Length];
             for (int i = 0; i < coroutines.Length; i++)
             {
-                coroutines[i] = NamedScriptableObjects.Instance.StartCoroutine((IEnumerator)yieldables[i]);
+                coroutines[i] = CoroutineRunner.Instance.StartCoroutine((IEnumerator)yieldables[i]);
             }
 
             foreach (var coroutine in coroutines)
@@ -77,8 +77,6 @@ namespace GameKit.Scripting.Internal
         [Scriptable("_wait_for_seconds")]
         public static IEnumerator WaitForSeconds(object time)
         {
-            Debug.Log("WaitForSeconds " + time);
-
             yield return new WaitForSeconds((float)time);
         }
 

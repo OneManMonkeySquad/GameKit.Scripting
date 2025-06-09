@@ -394,7 +394,6 @@ namespace GameKit.Scripting.Internal
 
         public void ThrowError(string str, SourceLocation location)
         {
-            var tk = _tokens[_currentTokenIdx];
             throw new System.Exception($"{str} (at {location})");
         }
 
