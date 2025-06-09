@@ -1,12 +1,14 @@
 {
-    "name": "GameKit.PlaymodeTests",
+    "name": "GameKit.Scripting.Editor.Tests",
     "rootNamespace": "",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "GameKit.Scripting"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": true,
