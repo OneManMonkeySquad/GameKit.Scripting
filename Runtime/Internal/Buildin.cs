@@ -92,6 +92,8 @@ namespace GameKit.Scripting.Internal
             return Time.frameCount;
         }
 
+        public static string Output;
+
         [Scriptable("print")]
         public static object Print(object val)
         {
@@ -108,9 +110,9 @@ namespace GameKit.Scripting.Internal
             };
 
             Debug.Log(str);
-            if (ILCompiler.Output != null)
+            if (Output != null)
             {
-                ILCompiler.Output += str;
+                Output += str;
             }
 
             return str;

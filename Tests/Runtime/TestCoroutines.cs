@@ -17,9 +17,9 @@ public class TestCoroutines
         + "    print(\"coro\")\n"
         + "}\n");
 
-        Assert.AreEqual("start", GameKit.Scripting.Internal.ILCompiler.Output);
+        Assert.AreEqual("start", GameKit.Scripting.Internal.Buildin.Output);
         yield return new WaitForSeconds(0.4f);
-        Assert.AreEqual("startcoro", GameKit.Scripting.Internal.ILCompiler.Output);
+        Assert.AreEqual("startcoro", GameKit.Scripting.Internal.Buildin.Output);
     }
 
     [UnityTest]
@@ -39,8 +39,8 @@ public class TestCoroutines
         + "    print(\"coro\")\n"
         + "}\n");
 
-        Assert.AreEqual("start", GameKit.Scripting.Internal.ILCompiler.Output);
+        Assert.AreEqual("start", GameKit.Scripting.Internal.Buildin.Output);
         yield return new WaitForSeconds(0.4f);
-        Assert.AreEqual("startcorocoro", GameKit.Scripting.Internal.ILCompiler.Output);
+        Assert.AreEqual("startcorocoro", GameKit.Scripting.Internal.Buildin.Output);
     }
 }

@@ -27,12 +27,12 @@ namespace GameKit.Scripting.Runtime
 
         static string Execute(string str, string funcName, string fileNameHint)
         {
-            ILCompiler.Output = "";
+            Buildin.Output = "";
 
             var compiledScript = Compile(str, fileNameHint);
             compiledScript.Execute(funcName);
 
-            return ILCompiler.Output;
+            return Buildin.Output;
         }
 
         public static CompiledScript CompileFile(string filePath)

@@ -12,8 +12,6 @@ namespace GameKit.Scripting.Internal
 {
     public class ILCompiler
     {
-        public static string Output;
-
         class Globals
         {
             public Dictionary<string, MethodInfo> Methods;
