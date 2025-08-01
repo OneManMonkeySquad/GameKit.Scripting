@@ -21,15 +21,21 @@ namespace GameKit.Scripting.Runtime
 
     public static class Script
     {
-        public static string Execute(string str) => ExecuteFunc(str, "main");
+        public static string Execute(string code) => ExecuteFunc(code, "main");
 
-        public static string ExecuteFunc(string str, string funcName) => Execute(str, funcName, "");
+        public static string ExecuteFile(string filePath)
+        {
+            var code = File.ReadAllText(filePath);
+            return ExecuteFunc(code, "main");
+        }
 
-        static string Execute(string str, string funcName, string fileNameHint)
+        public static string ExecuteFunc(string code, string funcName) => Execute(code, funcName, "");
+
+        static string Execute(string code, string funcName, string fileNameHint)
         {
             Buildin.Output = "";
 
-            var compiledScript = Compile(str, fileNameHint);
+            var compiledScript = Compile(code, fileNameHint);
             compiledScript.Execute(funcName);
 
             return Buildin.Output;
@@ -41,19 +47,19 @@ namespace GameKit.Scripting.Runtime
             return Compile(code, Path.GetFileName(filePath));
         }
 
-        public static CompiledScript Compile(string str, string fileNameHint)
+        public static CompiledScript Compile(string code, string fileNameHint)
         {
             var methods = new Dictionary<string, MethodInfo>();
             RegisterScriptableFunctions(methods);
 
-            var ast = Parse(str, fileNameHint, methods);
+            var ast = Parse(code, fileNameHint, methods);
             return CompileAst(ast, methods);
         }
 
-        public static Ast Parse(string str, string fileNameHint, Dictionary<string, MethodInfo> methods)
+        public static Ast Parse(string code, string fileNameHint, Dictionary<string, MethodInfo> methods)
         {
             var parser = new Parser();
-            var ast = parser.ParseToAst(str, fileNameHint, methods);
+            var ast = parser.ParseToAst(code, fileNameHint, methods);
             return ast;
         }
 
