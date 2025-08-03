@@ -19,16 +19,16 @@ namespace GameKit.Scripting.Runtime
         }
 
         [Scriptable("sin")]
-        public static object Sin(object val) => (float)math.sin((double)val);
+        public static float Sin(float val) => (float)math.sin(val);
 
         /// <summary>
         /// Call a scripting function the next frame.
         /// </summary>
         [Scriptable("queue_event")]
-        public static void QueueEvent(object ent, object name)
+        public static void QueueEvent(Entity ent, string name)
         {
-            var buff = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<ScriptEvent>((Entity)ent);
-            buff.Add(new ScriptEvent { Name = (string)name });
+            var buff = World.DefaultGameObjectInjectionWorld.EntityManager.GetBuffer<ScriptEvent>(ent);
+            buff.Add(new ScriptEvent { Name = name });
         }
     }
 }

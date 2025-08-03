@@ -1,9 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Reflection;
-using Unity.Collections;
 
 namespace GameKit.Scripting.Internal
 {
@@ -112,8 +110,23 @@ namespace GameKit.Scripting.Internal
     }
 
 
-    class ResolveTypes : IVisitStatements
+    class ResolveTypesVisitor : IVisitStatements
     {
+        readonly Dictionary<string, object> _methods = new();
+
+        public ResolveTypesVisitor(Ast ast, Dictionary<string, MethodInfo> methods)
+        {
+            foreach (var (name, info) in methods)
+            {
+                _methods.Add(name, info);
+            }
+
+            foreach (var func in ast.Functions)
+            {
+                _methods.Add(func.Name, func);
+            }
+        }
+
         public void Assignment(Assignment assignment)
         {
             assignment.ResultType = assignment.Value.ResultType;
@@ -126,12 +139,62 @@ namespace GameKit.Scripting.Internal
 
         public void MathExpr(MathExpr expr)
         {
-            expr.ResultType = typeof(object); // #todo
+            var l = expr.Left.ResultType;
+            var r = expr.Right.ResultType;
+            if (l == typeof(int) && r == typeof(int))
+            {
+                expr.ResultType = typeof(int);
+            }
+            else if (l == typeof(string) && r == typeof(string))
+            {
+                expr.ResultType = typeof(string);
+            }
+            else if (l == null || r == null)
+            {
+                throw new Exception($"Invalid MathExpr one is null");
+            }
+            else
+            {
+                throw new Exception($"Invalid MathExpr {l}/{r}");
+            }
         }
 
         public void Call(Call call)
         {
-            call.ResultType = typeof(object);
+            if (!_methods.TryGetValue(call.Name, out object info))
+                throw new Exception($"Function '{call.Name}' not found (at {call.SourceLocation})");
+
+            bool isCoroutineCall = false;
+            Type resultType;
+            switch (info)
+            {
+                case MethodInfo mi:
+                    resultType = mi.ReturnType;
+                    if (mi.ReturnType == typeof(IEnumerator))
+                    {
+                        isCoroutineCall = true;
+                    }
+                    break;
+
+                case FunctionDecl fd:
+                    resultType = typeof(object);
+                    if (fd.IsCoroutine)
+                    {
+                        isCoroutineCall = true;
+                    }
+                    break;
+
+                default:
+                    throw new Exception("case missing");
+            }
+
+            call.ResultType = resultType;
+
+            if (isCoroutineCall && !call.IsCoroutine)
+                throw new Exception($"Call to {call.Name} is coroutine but name does not start with _ (at {call.SourceLocation})");
+
+            if (!isCoroutineCall && call.IsCoroutine)
+                throw new Exception($"Call to {call.Name} is not a coroutine but name does start with _ (at {call.SourceLocation})");
         }
 
         public void FunctionDecl(FunctionDecl functionDecl) { }
@@ -141,9 +204,25 @@ namespace GameKit.Scripting.Internal
             groupingExpr.ResultType = groupingExpr.Value.ResultType;
         }
 
-        public void If(If @if)
+        public void If(If expr)
         {
-            @if.ResultType = typeof(object);
+            Type trueType = typeof(object);
+            if (expr.TrueStatements.Count > 0)
+            {
+                var lastStatement = expr.TrueStatements[^1];
+                trueType = lastStatement.ResultType;
+            }
+
+            Type falseType = typeof(object);
+            if (expr.FalseStatements?.Count > 0)
+            {
+                var lastStatement = expr.FalseStatements[^1];
+                falseType = lastStatement.ResultType;
+            }
+
+            // #todo what to do if there'S no else? what if true and false types diverge?
+
+            expr.ResultType = trueType;
         }
 
         public void LocalVariableDecl(LocalVariableDecl localVariableDecl)
@@ -178,6 +257,8 @@ namespace GameKit.Scripting.Internal
                 case ValueType.String:
                     valueExpr.ResultType = typeof(string);
                     break;
+                default:
+                    throw new Exception("missing case");
             }
         }
 
@@ -197,9 +278,6 @@ namespace GameKit.Scripting.Internal
                         break;
                     }
             }
-
-
-
         }
 
         public void ObjectRef(ObjectRefExpr objectRefExpr)
@@ -256,40 +334,13 @@ namespace GameKit.Scripting.Internal
             if (!_methods.TryGetValue(call.Name, out object info))
                 throw new Exception($"Function '{call.Name}' not found (at {call.SourceLocation})");
 
-            bool isCoroutineCall = false;
-            switch (info)
-            {
-                case MethodInfo mi:
-                    if (mi.ReturnType == typeof(IEnumerator))
-                    {
-                        isCoroutineCall = true;
-                    }
-                    break;
-
-                case FunctionDecl fd:
-                    if (fd.IsCoroutine)
-                    {
-                        isCoroutineCall = true;
-                    }
-                    break;
-
-                default:
-                    throw new Exception("case missing");
-            }
-
-            if (isCoroutineCall && !call.IsCoroutine)
-                throw new Exception($"Call to {call.Name} is coroutine but name does not start with _ (at {call.SourceLocation})");
-
-            if (!isCoroutineCall && call.IsCoroutine)
-                throw new Exception($"Call to {call.Name} is not a coroutine but name does start with _ (at {call.SourceLocation})");
-
             if (!_currentFunctionDecl.IsCoroutine)
             {
-                if (isCoroutineCall && !_scopeStack[^1].IsBranch)
+                if (call.IsCoroutine && !_scopeStack[^1].IsBranch)
                     throw new Exception($"Coroutine call to {call.Name} in non-coroutine function: add branch (at {call.SourceLocation})");
             }
 
-            if (isCoroutineCall)
+            if (call.IsCoroutine)
             {
                 if (_scopeStack[^1].IsBranch) // #todo maybe need to recurse, might not be the top stack
                 {
@@ -343,7 +394,7 @@ namespace GameKit.Scripting.Internal
             var resolveVariables = new ResolveVariablesVisitor();
             ast.Visit(resolveVariables);
 
-            var resolveTypes = new ResolveTypes();
+            var resolveTypes = new ResolveTypesVisitor(ast, methods);
             ast.Visit(resolveTypes);
 
             var resolveCoroutines = new ResolveCoroutines(ast, methods);

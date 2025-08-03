@@ -41,6 +41,7 @@ namespace GameKit.Scripting.Internal
     public abstract class Expression
     {
         public SourceLocation SourceLocation;
+
         public Type ResultType; // SA
 
         public abstract void Visit(IVisitStatements visitor);
@@ -97,7 +98,6 @@ namespace GameKit.Scripting.Internal
 
         public override void Visit(IVisitStatements visitor)
         {
-            visitor.If(this);
             Condition.Visit(visitor);
             foreach (var stmt in TrueStatements)
             {
@@ -110,6 +110,7 @@ namespace GameKit.Scripting.Internal
                     stmt.Visit(visitor);
                 }
             }
+            visitor.If(this);
         }
 
         public override string ToString(string padding)
@@ -281,9 +282,9 @@ namespace GameKit.Scripting.Internal
 
         public override void Visit(IVisitStatements visitor)
         {
-            visitor.MathExpr(this);
             Left.Visit(visitor);
             Right.Visit(visitor);
+            visitor.MathExpr(this);
         }
 
         public override string ToString(string padding)

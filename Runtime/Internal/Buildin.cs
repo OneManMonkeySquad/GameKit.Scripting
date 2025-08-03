@@ -80,19 +80,19 @@ namespace GameKit.Scripting.Internal
         }
 
         [Scriptable("_wait_for_seconds")]
-        public static IEnumerator WaitForSeconds(object time)
+        public static IEnumerator WaitForSeconds(float time)
         {
-            yield return new WaitForSeconds((float)time);
+            yield return new WaitForSeconds(time);
         }
 
         [Scriptable("float3")]
-        public static object Float3(object x, object y, object z)
+        public static float3 Float3(float x, float y, float z)
         {
-            return new float3((float)x, (float)y, (float)z);
+            return new float3(x, y, z);
         }
 
         [Scriptable("frame_number")]
-        public static object FrameNumber()
+        public static int FrameNumber()
         {
             return Time.frameCount;
         }
@@ -111,7 +111,7 @@ namespace GameKit.Scripting.Internal
                 Entity e => e.ToString(),
                 string s => s,
                 null => "null",
-                _ => throw new Exception("Todo ToString "),
+                _ => val.ToString(),
             };
 
             Debug.Log(str);
@@ -121,11 +121,6 @@ namespace GameKit.Scripting.Internal
             }
 
             return str;
-        }
-
-        public static bool ConvertValueToBool(object val)
-        {
-            return (bool)val;
         }
 
         public static object Negate(object value)
@@ -138,6 +133,9 @@ namespace GameKit.Scripting.Internal
                 _ => throw new Exception("Unexpected types for Negate " + value.GetType()),
             };
         }
+
+        public static int Add(int left, int right) => left + right;
+        public static string Add(string left, string right) => left + right;
 
         public static object Add(object left, object right)
         {
@@ -156,6 +154,8 @@ namespace GameKit.Scripting.Internal
             };
         }
 
+        public static int Mul(int left, int right) => left * right;
+
         public static object Mul(object left, object right)
         {
             return (left, right) switch
@@ -166,6 +166,9 @@ namespace GameKit.Scripting.Internal
                 _ => throw new Exception("Unexpected types for Mul " + (left.GetType(), right.GetType())),
             };
         }
+
+        public static object CmpEq(int left, int right) => left == right;
+        public static object CmpEq(Entity left, Entity right) => left == right;
 
         public static object CmpEq(object left, object right)
         {
@@ -188,6 +191,8 @@ namespace GameKit.Scripting.Internal
                 _ => throw new Exception("Unexpected types for CmpEq " + (left.GetType(), right.GetType())),
             };
         }
+
+        public static bool Greater(int left, int right) => left > right;
 
         public static object Greater(object left, object right)
         {
@@ -224,6 +229,8 @@ namespace GameKit.Scripting.Internal
                 _ => throw new Exception("Unexpected types for GEqual " + (left.GetType(), right.GetType())),
             };
         }
+
+        public static bool And(bool left, bool right) => left && right;
 
         public static object And(object left, object right)
         {

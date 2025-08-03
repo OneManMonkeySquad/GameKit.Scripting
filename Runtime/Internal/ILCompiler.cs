@@ -2,11 +2,13 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using GameKit.Scripting.Runtime;
 using GrEmit;
 using Unity.Assertions;
+using UnityEngine;
 
 namespace GameKit.Scripting.Internal
 {
@@ -254,10 +256,8 @@ namespace GameKit.Scripting.Internal
                     {
                         case VariableSource.Local:
                             if (!localVars.TryGetValue(assignment.VariableName, out var local))
-                            {
-                                local = il.DeclareLocal(typeof(object));
-                                localVars.Add(assignment.VariableName, local);
-                            }
+                                throw new Exception("this should not happen");
+
                             il.Stloc(local);
                             break;
                         default:
@@ -274,22 +274,18 @@ namespace GameKit.Scripting.Internal
 
                         case ValueType.Bool:
                             il.Ldc_I4((bool)var.Value ? 1 : 0);
-                            il.Box(typeof(bool));
                             break;
 
                         case ValueType.Int:
                             il.Ldc_I4((int)var.Value);
-                            il.Box(typeof(int));
                             break;
 
                         case ValueType.Float:
                             il.Ldc_R4((float)var.Value);
-                            il.Box(typeof(float));
                             break;
 
                         case ValueType.Double:
                             il.Ldc_R8((double)var.Value);
-                            il.Box(typeof(double));
                             break;
 
                         case ValueType.String:
@@ -323,10 +319,10 @@ namespace GameKit.Scripting.Internal
                     switch (var.Type)
                     {
                         case MathType.Add:
-                            il.Call(typeof(Buildin).GetMethod("Add"));
+                            il.Call(typeof(Buildin).GetMethod("Add", new Type[] { var.Left.ResultType, var.Right.ResultType }));
                             break;
                         case MathType.Mul:
-                            il.Call(typeof(Buildin).GetMethod("Mul"));
+                            il.Call(typeof(Buildin).GetMethod("Mul", new Type[] { var.Left.ResultType, var.Right.ResultType }));
                             break;
                     }
                     break;
@@ -337,16 +333,16 @@ namespace GameKit.Scripting.Internal
                     switch (cmp.Type)
                     {
                         case CmpType.And:
-                            il.Call(typeof(Buildin).GetMethod("And"));
+                            il.Call(typeof(Buildin).GetMethod("And", new Type[] { cmp.Left.ResultType, cmp.Right.ResultType }));
                             break;
                         case CmpType.Equal:
-                            il.Call(typeof(Buildin).GetMethod("CmpEq"));
+                            il.Call(typeof(Buildin).GetMethod("CmpEq", new Type[] { cmp.Left.ResultType, cmp.Right.ResultType }));
                             break;
                         case CmpType.NotEqual:
                             il.Call(typeof(Buildin).GetMethod("CmpNEq"));
                             break;
                         case CmpType.Greater:
-                            il.Call(typeof(Buildin).GetMethod("Greater"));
+                            il.Call(typeof(Buildin).GetMethod("Greater", new Type[] { cmp.Left.ResultType, cmp.Right.ResultType }));
                             break;
                         case CmpType.Less:
                             il.Call(typeof(Buildin).GetMethod("Less"));
@@ -375,7 +371,8 @@ namespace GameKit.Scripting.Internal
 
                 case If ifStmt:
                     VisitExpression(ifStmt.Condition, il, globals, localVars);
-                    il.Call(typeof(Buildin).GetMethod("ConvertValueToBool"));
+
+                    //   il.Call(typeof(Buildin).GetMethod("ConvertValueToBool"));
 
                     var conditionWasTrue = il.DefineLabel("if_end");
                     var conditionWasFalse = il.DefineLabel("if_false");
@@ -399,7 +396,7 @@ namespace GameKit.Scripting.Internal
                 case LocalVariableDecl variableDecl:
                     VisitExpression(variableDecl.Value, il, globals, localVars);
                     il.Dup(); // Make sure the expression value remains after store
-                    var local2 = il.DeclareLocal(typeof(object));
+                    var local2 = il.DeclareLocal(variableDecl.ResultType);
                     localVars.Add(variableDecl.VariableName, local2);
                     il.Stloc(local2);
                     break;
@@ -469,11 +466,6 @@ namespace GameKit.Scripting.Internal
             }
         }
 
-        void EmitCoroutineStateUpdate()
-        {
-
-        }
-
         void VisitCall(Call call, GroboIL il, Globals globals, Dictionary<string, GroboIL.Local> localVars)
         {
             if (!globals.Methods.TryGetValue(call.Name, out MethodInfo method))
@@ -496,18 +488,40 @@ namespace GameKit.Scripting.Internal
                 }
             }
 
+            var callParams = method.GetParameters();
             for (int i = 0; i < call.Arguments.Count; i++)
             {
                 var arg = call.Arguments[i];
                 VisitExpression(arg, il, globals, localVars);
+
+                var callParam = callParams[i];
+                if (callParam.ParameterType == typeof(object) && arg.ResultType == typeof(int))
+                {
+                    il.Box(typeof(int));
+                }
             }
 
+
+
+
             il.Call(method);
+
 
             // Exernal methods may be void
             if (method.ReturnType == typeof(void))
             {
                 il.Ldnull();
+            }
+            else if (method.ReturnType != typeof(object))
+            {
+                if (!method.ReturnType.IsValueType)
+                {
+                    il.Castclass(typeof(object));
+                }
+                else
+                {
+                    il.Box(method.ReturnType);
+                }
             }
 
             if (call.IsCoroutine)

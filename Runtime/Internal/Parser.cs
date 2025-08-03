@@ -36,6 +36,16 @@ namespace GameKit.Scripting.Internal
                 functions.Add(new FunctionDecl { Name = "main", Body = statements, ParameterNames = new() });
             }
 
+            // Write AST before SA
+            File.WriteAllText("E:\\ast.txt", "");
+            File.AppendAllText("E:\\ast.txt", "\n");
+
+            foreach (var f in functions)
+            {
+                File.AppendAllText("E:\\ast.txt", $"{f.ToString("")}\n");
+                File.AppendAllText("E:\\ast.txt", "\n");
+            }
+
             //
             var ast = new Ast
             {
@@ -45,7 +55,7 @@ namespace GameKit.Scripting.Internal
 
             SemanticAnalysis.Analyse(ast, methods);
 
-            //
+            // Write AST after SA
             File.WriteAllText("E:\\ast.txt", "");
             File.AppendAllText("E:\\ast.txt", "\n");
 
