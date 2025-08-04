@@ -55,7 +55,7 @@ namespace GameKit.Scripting.Runtime
                 {
                     foreach (var evt in events)
                     {
-                        script.Script.Execute(evt.Name.ToString(), entity);
+                        script.Script.ExecuteFunction(evt.Name.ToString(), entity);
                     }
 
                     events.RemoveRange(0, numEvents); // Instead of clear, execution could have added more events

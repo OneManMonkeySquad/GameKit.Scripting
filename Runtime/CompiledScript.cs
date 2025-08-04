@@ -22,17 +22,17 @@ namespace GameKit.Scripting.Runtime
             return _functions.ContainsKey(name);
         }
 
-        public void Execute(string name)
+        public void ExecuteFunction(string name)
         {
             _functions[name].DynamicInvoke();
         }
 
-        public void Execute(string name, object arg0)
+        public void ExecuteFunction(string name, object arg0)
         {
             _functions[name].DynamicInvoke(arg0);
         }
 
-        public void TryExecute(string name)
+        public void TryExecuteFunction(string name)
         {
             if (_functions.TryGetValue(name, out var method))
             {
@@ -40,7 +40,7 @@ namespace GameKit.Scripting.Runtime
             }
         }
 
-        public void TryExecute(string name, object arg0)
+        public void TryExecuteFunction(string name, object arg0)
         {
             if (_functions.TryGetValue(name, out var method))
             {

@@ -50,7 +50,7 @@ namespace GameKit.Scripting.Runtime
 
                     //
                     var cs = Script.Compile(authoring.Asset.Code, authoring.Asset.FileNameHint);
-                    cs.TryExecute("on_bake");
+                    cs.TryExecuteFunction("on_bake");
                 }
 
                 //

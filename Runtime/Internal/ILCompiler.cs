@@ -511,6 +511,11 @@ namespace GameKit.Scripting.Internal
                 {
                     il.Box(typeof(bool));
                 }
+                else if (parameterType != typeof(object) && parameterType.IsClass && argument.ResultType == typeof(object))
+                {
+                    // Argument is object, parameter is any class - attempt to cast
+                    il.Castclass(parameterType);
+                }
             }
 
 

@@ -36,7 +36,7 @@ namespace GameKit.Scripting.Runtime
             Buildin.Output = "";
 
             var compiledScript = Compile(code, fileNameHint);
-            compiledScript.Execute(funcName);
+            compiledScript.ExecuteFunction(funcName);
 
             return Buildin.Output;
         }

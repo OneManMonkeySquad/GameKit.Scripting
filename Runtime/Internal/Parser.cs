@@ -32,16 +32,14 @@ namespace GameKit.Scripting.Internal
                 }
             }
 
-            if (statements.Count > 0)
+            // Note: We emit "main" function even if it's empty - that's intentional
+            functions.Add(new FunctionDecl
             {
-                functions.Add(new FunctionDecl
-                {
-                    Name = "main",
-                    Body = statements,
-                    ParameterNames = new(),
-                    ResultType = typeof(object)
-                });
-            }
+                Name = "main",
+                Body = statements,
+                ParameterNames = new(),
+                ResultType = typeof(object)
+            });
 
             // Write AST before SA
             File.WriteAllText("E:\\ast.txt", "");
