@@ -13,7 +13,11 @@ namespace GameKit.Scripting.Runtime
     {
         public readonly string Name;
 
-        public ScriptableAttribute(string name)
+        /// <summary>
+        /// Mark function as exposed to scripting. Note that if no name is provided the
+        /// methods name is converted to snake-case.
+        /// </summary>
+        public ScriptableAttribute(string name = null)
         {
             Name = name;
         }
@@ -77,6 +81,12 @@ namespace GameKit.Scripting.Runtime
             foreach (var taggedMethod in taggedMethods)
             {
                 var name = taggedMethod.GetCustomAttribute<ScriptableAttribute>().Name;
+                if (name == null)
+                {
+                    name = ConvertStringToSnakeCase(taggedMethod.Name);
+                    Debug.Log(name);
+                }
+
                 if (methods.ContainsKey(name))
                 {
                     Debug.LogError($"Multiple Scriptable methods with the same name '{name}'. This is not supported.");
@@ -88,6 +98,34 @@ namespace GameKit.Scripting.Runtime
 #else
             // #todo
 #endif
+        }
+
+        /// <summary>
+        /// GetCake => get_cake
+        /// </summary>
+        static string ConvertStringToSnakeCase(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return name;
+
+            var result = new System.Text.StringBuilder();
+            for (int i = 0; i < name.Length; i++)
+            {
+                char c = name[i];
+                if (char.IsUpper(c))
+                {
+                    if (i > 0)
+                    {
+                        result.Append('_');
+                    }
+                    result.Append(char.ToLower(c));
+                }
+                else
+                {
+                    result.Append(c);
+                }
+            }
+            return result.ToString();
         }
     }
 }

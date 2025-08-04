@@ -85,13 +85,13 @@ namespace GameKit.Scripting.Internal
             yield return new WaitForSeconds(time);
         }
 
-        [Scriptable("float3")]
+        [Scriptable]
         public static float3 Float3(float x, float y, float z)
         {
             return new float3(x, y, z);
         }
 
-        [Scriptable("frame_number")]
+        [Scriptable]
         public static int FrameNumber()
         {
             return Time.frameCount;
@@ -99,7 +99,7 @@ namespace GameKit.Scripting.Internal
 
         public static string Output;
 
-        [Scriptable("print")]
+        [Scriptable]
         public static object Print(object val)
         {
             var str = val switch
