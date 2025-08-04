@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -33,7 +34,13 @@ namespace GameKit.Scripting.Internal
 
             if (statements.Count > 0)
             {
-                functions.Add(new FunctionDecl { Name = "main", Body = statements, ParameterNames = new() });
+                functions.Add(new FunctionDecl
+                {
+                    Name = "main",
+                    Body = statements,
+                    ParameterNames = new(),
+                    ResultType = typeof(object)
+                });
             }
 
             // Write AST before SA
@@ -154,7 +161,8 @@ namespace GameKit.Scripting.Internal
                 Name = name.Content,
                 Body = statements,
                 ParameterNames = parameters,
-                SourceLocation = name.SourceLoc
+                SourceLocation = name.SourceLoc,
+                ResultType = name.Content.StartsWith("_") ? typeof(IEnumerator) : typeof(object)
             };
         }
 

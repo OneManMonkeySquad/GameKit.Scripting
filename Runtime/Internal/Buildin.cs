@@ -123,19 +123,14 @@ namespace GameKit.Scripting.Internal
             return str;
         }
 
-        public static object Negate(object value)
-        {
-            return value switch
-            {
-                int i => -i,
-                float f => -f,
-                double d => -d,
-                _ => throw new Exception("Unexpected types for Negate " + value.GetType()),
-            };
-        }
+        public static int Negate(int value) => -value;
+        public static float Negate(float value) => -value;
+        public static double Negate(double value) => -value;
 
         public static int Add(int left, int right) => left + right;
         public static string Add(string left, string right) => left + right;
+        public static string Add(int left, string right) => left + right;
+        public static string Add(string left, int right) => left + right;
 
         public static object Add(object left, object right)
         {
@@ -167,41 +162,15 @@ namespace GameKit.Scripting.Internal
             };
         }
 
-        public static object CmpEq(int left, int right) => left == right;
-        public static object CmpEq(Entity left, Entity right) => left == right;
+        public static bool CmpEq(object left, object right) => left == right;
+        public static bool CmpEq(int left, int right) => left == right;
+        public static bool CmpEq(Entity left, Entity right) => left == right;
 
-        public static object CmpEq(object left, object right)
-        {
-            return (left, right) switch
-            {
-                (null, null) => true,
-                (int l, int r) => l == r,
-                (Entity l, Entity r) => l == r,
-                _ => throw new Exception("Unexpected types for CmpEq " + (left.GetType(), right.GetType())),
-            };
-        }
-
-        public static object CmpNEq(object left, object right)
-        {
-            return (left, right) switch
-            {
-                (null, null) => false,
-                (int l, int r) => l != r,
-                (Entity l, Entity r) => l != r,
-                _ => throw new Exception("Unexpected types for CmpEq " + (left.GetType(), right.GetType())),
-            };
-        }
+        public static bool CmpNEq(object left, object right) => left != right;
+        public static bool CmpNEq(int left, int right) => left != right;
+        public static bool CmpNEq(Entity left, Entity right) => left != right;
 
         public static bool Greater(int left, int right) => left > right;
-
-        public static object Greater(object left, object right)
-        {
-            return (left, right) switch
-            {
-                (int l, int r) => l > r,
-                _ => throw new Exception("Unexpected types for Greater " + (left.GetType(), right.GetType())),
-            };
-        }
 
         public static object Less(object left, object right)
         {
@@ -212,33 +181,10 @@ namespace GameKit.Scripting.Internal
             };
         }
 
-        public static object LEqual(object left, object right)
-        {
-            return (left, right) switch
-            {
-                (int l, int r) => l <= r,
-                _ => throw new Exception("Unexpected types for LEqual " + (left.GetType(), right.GetType())),
-            };
-        }
+        public static bool LEqual(int left, int right) => left <= right;
 
-        public static object GEqual(object left, object right)
-        {
-            return (left, right) switch
-            {
-                (int l, int r) => l >= r,
-                _ => throw new Exception("Unexpected types for GEqual " + (left.GetType(), right.GetType())),
-            };
-        }
+        public static bool GEqual(int left, int right) => left >= right;
 
         public static bool And(bool left, bool right) => left && right;
-
-        public static object And(object left, object right)
-        {
-            return (left, right) switch
-            {
-                (bool l, bool r) => l && r,
-                _ => throw new Exception("Unexpected types for and " + (left.GetType(), right.GetType())),
-            };
-        }
     }
 }

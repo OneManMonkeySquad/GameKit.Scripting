@@ -183,7 +183,8 @@ public class TestBaseLanguage
     [Test]
     public void TestAssignFalseIfAsExpression()
     {
-        Assert.AreEqual("null", Script.Execute("x := if 1 > 2 {\n"
+        // Variables default to their C# default value
+        Assert.AreEqual("0", Script.Execute("x := if 1 > 2 {\n"
             + "    42\n"
             + "};\n"
             + "print(x)"));

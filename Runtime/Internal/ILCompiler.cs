@@ -64,7 +64,7 @@ namespace GameKit.Scripting.Internal
             {
                 var method = myType.GetMethod(func.Name);
 
-                Delegate d = null;
+                Delegate d;
                 if (method.GetParameters().Length == 0)
                 {
                     d = method.CreateDelegate(typeof(Func<object>), null);
@@ -77,9 +77,10 @@ namespace GameKit.Scripting.Internal
                 {
                     d = method.CreateDelegate(typeof(Func<object, object, object>), null);
                 }
-
-                if (d == null)
+                else
+                {
                     throw new Exception("todo");
+                }
 
                 methodDelegates.Add(func.Name, d);
             }
@@ -330,35 +331,43 @@ namespace GameKit.Scripting.Internal
                 case CmpExpr cmp:
                     VisitExpression(cmp.Left, il, globals, localVars);
                     VisitExpression(cmp.Right, il, globals, localVars);
+
+                    string name = null;
                     switch (cmp.Type)
                     {
                         case CmpType.And:
-                            il.Call(typeof(Buildin).GetMethod("And", new Type[] { cmp.Left.ResultType, cmp.Right.ResultType }));
+                            name = "And";
                             break;
                         case CmpType.Equal:
-                            il.Call(typeof(Buildin).GetMethod("CmpEq", new Type[] { cmp.Left.ResultType, cmp.Right.ResultType }));
+                            name = "CmpEq";
                             break;
                         case CmpType.NotEqual:
-                            il.Call(typeof(Buildin).GetMethod("CmpNEq"));
+                            name = "CmpNEq";
                             break;
                         case CmpType.Greater:
-                            il.Call(typeof(Buildin).GetMethod("Greater", new Type[] { cmp.Left.ResultType, cmp.Right.ResultType }));
+                            name = "Greater";
                             break;
                         case CmpType.Less:
-                            il.Call(typeof(Buildin).GetMethod("Less"));
+                            name = "Less";
                             break;
                         case CmpType.LessOrEqual:
-                            il.Call(typeof(Buildin).GetMethod("LEqual"));
+                            name = "LEqual";
                             break;
                         case CmpType.GreaterOrEqual:
-                            il.Call(typeof(Buildin).GetMethod("GEqual"));
+                            name = "GEqual";
                             break;
                     }
+
+                    MethodInfo mi = typeof(Buildin).GetMethod(name, new Type[] { cmp.Left.ResultType, cmp.Right.ResultType });
+                    if (mi == null)
+                        throw new Exception($"overload not found {name} {cmp.Left.ResultType} {cmp.Right.ResultType}");
+
+                    il.Call(mi);
                     break;
 
                 case NegateExpr var:
                     VisitExpression(var.Value, il, globals, localVars);
-                    il.Call(typeof(Buildin).GetMethod("Negate"));
+                    il.Call(typeof(Buildin).GetMethod("Negate", new Type[] { var.Value.ResultType }));
                     break;
 
                 case Call call:
@@ -488,16 +497,19 @@ namespace GameKit.Scripting.Internal
                 }
             }
 
-            var callParams = method.GetParameters();
             for (int i = 0; i < call.Arguments.Count; i++)
             {
-                var arg = call.Arguments[i];
-                VisitExpression(arg, il, globals, localVars);
+                var argument = call.Arguments[i];
+                VisitExpression(argument, il, globals, localVars);
 
-                var callParam = callParams[i];
-                if (callParam.ParameterType == typeof(object) && arg.ResultType == typeof(int))
+                var parameterType = call.Target.ParameterTypes[i];
+                if (parameterType == typeof(object) && argument.ResultType == typeof(int))
                 {
                     il.Box(typeof(int));
+                }
+                else if (parameterType == typeof(object) && argument.ResultType == typeof(bool))
+                {
+                    il.Box(typeof(bool));
                 }
             }
 

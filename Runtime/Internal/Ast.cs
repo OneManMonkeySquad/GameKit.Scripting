@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using Unity.Assertions;
 
 namespace GameKit.Scripting.Internal
 {
@@ -49,22 +52,43 @@ namespace GameKit.Scripting.Internal
         public abstract string ToString(string padding);
     }
 
+    public class FunctionInfo
+    {
+        public Type ReturnType { get; private set; }
+        public Type[] ParameterTypes { get; private set; }
+
+        public FunctionInfo(MethodInfo mi)
+        {
+            ReturnType = mi.ReturnType;
+            ParameterTypes = mi.GetParameters().Select(p => p.ParameterType).ToArray();
+        }
+
+        public FunctionInfo(FunctionDecl decl)
+        {
+            Assert.IsNotNull(decl.ResultType);
+
+            ReturnType = decl.ResultType;
+            ParameterTypes = decl.ParameterNames.Select(p => typeof(object)).ToArray();
+        }
+    }
+
     public class Call : Expression
     {
         public string Name;
         public List<Expression> Arguments;
         public bool IsCoroutine => Name.StartsWith("_");
 
+        public FunctionInfo Target; // SA
         public bool IsBranch; // SA
         public bool IsSync; // SA
 
         public override void Visit(IVisitStatements visitor)
         {
-            visitor.Call(this);
             foreach (var arg in Arguments)
             {
                 arg.Visit(visitor);
             }
+            visitor.Call(this);
         }
 
         public override string ToString(string padding)
@@ -254,8 +278,8 @@ namespace GameKit.Scripting.Internal
 
         public override void Visit(IVisitStatements visitor)
         {
-            visitor.NegateExpr(this);
             Value.Visit(visitor);
+            visitor.NegateExpr(this);
         }
 
         public override string ToString(string padding)

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using Unity.Assertions;
 
 namespace GameKit.Scripting.Internal
 {
@@ -109,26 +110,27 @@ namespace GameKit.Scripting.Internal
         public void SyncExpr(SyncExpr syncExpr) { }
     }
 
-
     class ResolveTypesVisitor : IVisitStatements
     {
-        readonly Dictionary<string, object> _methods = new();
+        readonly Dictionary<string, FunctionInfo> _methods = new();
 
         public ResolveTypesVisitor(Ast ast, Dictionary<string, MethodInfo> methods)
         {
             foreach (var (name, info) in methods)
             {
-                _methods.Add(name, info);
+                _methods.Add(name, new FunctionInfo(info));
             }
 
             foreach (var func in ast.Functions)
             {
-                _methods.Add(func.Name, func);
+                _methods.Add(func.Name, new FunctionInfo(func));
             }
         }
 
         public void Assignment(Assignment assignment)
         {
+            Assert.IsNotNull(assignment.Value.ResultType);
+
             assignment.ResultType = assignment.Value.ResultType;
         }
 
@@ -141,11 +143,21 @@ namespace GameKit.Scripting.Internal
         {
             var l = expr.Left.ResultType;
             var r = expr.Right.ResultType;
+
+            // #todo lol
             if (l == typeof(int) && r == typeof(int))
             {
                 expr.ResultType = typeof(int);
             }
             else if (l == typeof(string) && r == typeof(string))
+            {
+                expr.ResultType = typeof(string);
+            }
+            else if (l == typeof(int) && r == typeof(string))
+            {
+                expr.ResultType = typeof(string);
+            }
+            else if (l == typeof(string) && r == typeof(int))
             {
                 expr.ResultType = typeof(string);
             }
@@ -161,35 +173,15 @@ namespace GameKit.Scripting.Internal
 
         public void Call(Call call)
         {
-            if (!_methods.TryGetValue(call.Name, out object info))
+            if (!_methods.TryGetValue(call.Name, out FunctionInfo info))
                 throw new Exception($"Function '{call.Name}' not found (at {call.SourceLocation})");
 
-            bool isCoroutineCall = false;
-            Type resultType;
-            switch (info)
-            {
-                case MethodInfo mi:
-                    resultType = mi.ReturnType;
-                    if (mi.ReturnType == typeof(IEnumerator))
-                    {
-                        isCoroutineCall = true;
-                    }
-                    break;
+            Assert.IsNotNull(info.ReturnType);
 
-                case FunctionDecl fd:
-                    resultType = typeof(object);
-                    if (fd.IsCoroutine)
-                    {
-                        isCoroutineCall = true;
-                    }
-                    break;
+            call.Target = info;
+            call.ResultType = info.ReturnType;
 
-                default:
-                    throw new Exception("case missing");
-            }
-
-            call.ResultType = resultType;
-
+            bool isCoroutineCall = info.ReturnType == typeof(IEnumerator);
             if (isCoroutineCall && !call.IsCoroutine)
                 throw new Exception($"Call to {call.Name} is coroutine but name does not start with _ (at {call.SourceLocation})");
 
@@ -201,6 +193,8 @@ namespace GameKit.Scripting.Internal
 
         public void GroupingExpr(GroupingExpr groupingExpr)
         {
+            Assert.IsNotNull(groupingExpr.Value.ResultType);
+
             groupingExpr.ResultType = groupingExpr.Value.ResultType;
         }
 
@@ -227,39 +221,30 @@ namespace GameKit.Scripting.Internal
 
         public void LocalVariableDecl(LocalVariableDecl localVariableDecl)
         {
+            Assert.IsNotNull(localVariableDecl.Value.ResultType);
+
             localVariableDecl.ResultType = localVariableDecl.Value.ResultType;
         }
 
         public void NegateExpr(NegateExpr negateExpr)
         {
+            Assert.IsNotNull(negateExpr.Value.ResultType);
+
             negateExpr.ResultType = negateExpr.Value.ResultType;
         }
 
         public void ValueExpr(ValueExpr valueExpr)
         {
-            switch (valueExpr.ValueType)
+            valueExpr.ResultType = valueExpr.ValueType switch
             {
-                case ValueType.Null:
-                    valueExpr.ResultType = typeof(object);
-                    break;
-                case ValueType.Bool:
-                    valueExpr.ResultType = typeof(bool);
-                    break;
-                case ValueType.Int:
-                    valueExpr.ResultType = typeof(int);
-                    break;
-                case ValueType.Float:
-                    valueExpr.ResultType = typeof(float);
-                    break;
-                case ValueType.Double:
-                    valueExpr.ResultType = typeof(double);
-                    break;
-                case ValueType.String:
-                    valueExpr.ResultType = typeof(string);
-                    break;
-                default:
-                    throw new Exception("missing case");
-            }
+                ValueType.Null => typeof(object),
+                ValueType.Bool => typeof(bool),
+                ValueType.Int => typeof(int),
+                ValueType.Float => typeof(float),
+                ValueType.Double => typeof(double),
+                ValueType.String => typeof(string),
+                _ => throw new Exception("missing case"),
+            };
         }
 
         public void VariableExpr(VariableExpr variableExpr)
