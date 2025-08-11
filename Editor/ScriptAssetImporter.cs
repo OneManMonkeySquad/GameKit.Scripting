@@ -36,7 +36,7 @@ namespace GameKit.Scripting
                 asset.FileNameHint = ctx.assetPath;
 
                 var cs = Script.CompileAst(ast, methods);
-                cs.TryExecuteFunction("on_build");
+                cs.Script.TryExecuteFunction("on_build");
 
                 asset.LastCompilationFailed = false;
             }

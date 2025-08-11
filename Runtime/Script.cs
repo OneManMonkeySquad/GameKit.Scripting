@@ -23,6 +23,15 @@ namespace GameKit.Scripting.Runtime
         }
     }
 
+    public struct CompileResult
+    {
+        public bool Failed => Script == null;
+
+        public CompiledScript Script;
+
+        public List<ParserException> Errors;
+    }
+
     public static class Script
     {
         public static string Execute(string code) => ExecuteFunc(code, "main");
@@ -39,39 +48,55 @@ namespace GameKit.Scripting.Runtime
         {
             Buildin.Output = "";
 
-            var compiledScript = Compile(code, fileNameHint);
-            compiledScript.ExecuteFunction(funcName);
+            var result = Compile(code, fileNameHint);
+            if (result.Failed)
+                return null; // #todo
+
+            result.Script.ExecuteFunction(funcName);
 
             return Buildin.Output;
         }
 
-        public static CompiledScript CompileFile(string filePath)
+        public static CompileResult CompileFile(string filePath)
         {
             var code = File.ReadAllText(filePath);
             return Compile(code, Path.GetFileName(filePath));
         }
 
-        public static CompiledScript Compile(string code, string fileNameHint)
+        public static CompileResult Compile(string code, string fileNameHint)
         {
             var methods = new Dictionary<string, MethodInfo>();
             RegisterScriptableFunctions(methods);
 
-            var ast = Parse(code, fileNameHint, methods);
-            return CompileAst(ast, methods);
+            var parseResult = Parse(code, fileNameHint, methods);
+            return CompileAst(parseResult, methods);
         }
 
-        public static Ast Parse(string code, string fileNameHint, Dictionary<string, MethodInfo> methods)
+        public static ParserResult Parse(string code, string fileNameHint)
+        {
+            var methods = new Dictionary<string, MethodInfo>();
+            RegisterScriptableFunctions(methods);
+
+            var parser = new Parser();
+            var result = parser.ParseToAst(code, fileNameHint, methods);
+            return result;
+        }
+
+        public static ParserResult Parse(string code, string fileNameHint, Dictionary<string, MethodInfo> methods)
         {
             var parser = new Parser();
-            var ast = parser.ParseToAst(code, fileNameHint, methods);
-            return ast;
+            var result = parser.ParseToAst(code, fileNameHint, methods);
+            return result;
         }
 
-        public static CompiledScript CompileAst(Ast ast, Dictionary<string, MethodInfo> methods)
+        public static CompileResult CompileAst(ParserResult result, Dictionary<string, MethodInfo> methods)
         {
+            if (result.Failed)
+                return new CompileResult { Errors = result.Errors };
+
             var compiler = new ILCompiler();
-            var ca = compiler.Compile(ast, methods);
-            return ca;
+            var ca = compiler.Compile(result.Ast, methods);
+            return new CompileResult { Script = ca };
         }
 
         public static void RegisterScriptableFunctions(Dictionary<string, MethodInfo> methods)
@@ -84,7 +109,6 @@ namespace GameKit.Scripting.Runtime
                 if (name == null)
                 {
                     name = ConvertStringToSnakeCase(taggedMethod.Name);
-                    Debug.Log(name);
                 }
 
                 if (methods.ContainsKey(name))

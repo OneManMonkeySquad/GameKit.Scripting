@@ -24,10 +24,9 @@ namespace GameKit.Scripting.Runtime
                     continue;
 
                 var compiledScript = Script.Compile(attachedScript.Script.Value.Code.ToString(), attachedScript.Script.Value.FileNameHint.ToString());
-
                 ecb.AddComponent(entity, new AttachedCompiledScript
                 {
-                    Script = compiledScript,
+                    Script = compiledScript.Script,
                     CodeHash = attachedScript.Script.Value.CodeHash,
                 });
             }
@@ -40,10 +39,10 @@ namespace GameKit.Scripting.Runtime
                     var compiledScript = Script.Compile(attachedScript.Script.Value.Code.ToString(), attachedScript.Script.Value.FileNameHint.ToString());
 
                     // Copy old property values to new instance
-                    attachedCompiledScript.Script.CopyStateTo(compiledScript);
+                    attachedCompiledScript.Script.CopyStateTo(compiledScript.Script);
 
                     // Swap the script
-                    attachedCompiledScript.Script = compiledScript;
+                    attachedCompiledScript.Script = compiledScript.Script;
                     attachedCompiledScript.CodeHash = attachedScript.Script.Value.CodeHash;
                 }
             }

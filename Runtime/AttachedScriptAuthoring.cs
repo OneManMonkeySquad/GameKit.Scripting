@@ -25,6 +25,13 @@ namespace GameKit.Scripting.Runtime
 
     public class AttachedScriptAuthoring : MonoBehaviour
     {
+        public enum SourceType
+        {
+            Inline, File,
+        }
+
+        public SourceType Source;
+        public string Code;
         public ScriptAsset Asset;
         public TransformUsageFlags TransformUsage;
 
@@ -50,7 +57,7 @@ namespace GameKit.Scripting.Runtime
 
                     //
                     var cs = Script.Compile(authoring.Asset.Code, authoring.Asset.FileNameHint);
-                    cs.TryExecuteFunction("on_bake");
+                    cs.Script.TryExecuteFunction("on_bake");
                 }
 
                 //

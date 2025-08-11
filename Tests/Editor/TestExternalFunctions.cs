@@ -26,8 +26,8 @@ public class TestExternalFunctions
             { "test2", typeof(TestExternalFunctions).GetMethod(nameof(Test2)) }
         };
 
-        var ast = Script.Parse("test(test2())", "", methods);
-        var cs = Script.CompileAst(ast, methods);
-        cs.ExecuteFunction("main");
+        var result = Script.Parse("test(test2())", "", methods);
+        var cs = Script.CompileAst(result, methods);
+        cs.Script.ExecuteFunction("main");
     }
 }

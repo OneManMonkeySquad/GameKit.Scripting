@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -51,8 +52,8 @@ namespace GameKit.Scripting.Internal
         {
             if (Content != null)
                 return $"'{Content}'";
-            else
-                return TokenTypeToString(Kind);
+
+            return TokenTypeToString(Kind);
         }
 
         public static string TokenTypeToString(TokenKind kind) => kind switch
@@ -91,6 +92,16 @@ namespace GameKit.Scripting.Internal
             TokenKind.Double => "<double>",
             _ => throw new System.Exception("Missing case"),
         };
+    }
+
+    public class ParserException : Exception
+    {
+        public SourceLocation SourceLoc { get; }
+
+        public ParserException(string message, SourceLocation sourceLoc) : base(message)
+        {
+            SourceLoc = sourceLoc;
+        }
     }
 
     public class Lexer
@@ -276,7 +287,7 @@ namespace GameKit.Scripting.Internal
                 '<' => TokenKind.CmpLt,
                 ':' => TokenKind.Colon,
                 '@' => TokenKind.At,
-                _ => throw new System.Exception("Todo"),
+                _ => throw new Exception("Todo"),
             };
         }
 
@@ -374,7 +385,7 @@ namespace GameKit.Scripting.Internal
         {
             var tk = _tokens[_currentTokenIdx];
             if (tk.Kind != kind)
-                throw new System.Exception($"Expected {(what != null ? $"({what}) " : "")}{Token.TokenTypeToString(kind)} got '{tk}' (at {tk.SourceLoc})");
+                throw new ParserException($"Expected {(what != null ? $"({what}) " : "")}{Token.TokenTypeToString(kind)} got '{tk}'", tk.SourceLoc);
 
             ++_currentTokenIdx;
             return tk;
@@ -389,12 +400,7 @@ namespace GameKit.Scripting.Internal
         public void ThrowError(string str)
         {
             var tk = _tokens[_currentTokenIdx];
-            ThrowError(str, tk.SourceLoc);
-        }
-
-        public void ThrowError(string str, SourceLocation location)
-        {
-            throw new System.Exception($"{str} (at {location})");
+            throw new ParserException(str, tk.SourceLoc);
         }
 
         public bool Peek(params TokenKind[] kinds)

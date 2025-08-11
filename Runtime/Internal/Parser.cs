@@ -5,6 +5,15 @@ using System.Reflection;
 
 namespace GameKit.Scripting.Internal
 {
+    public struct ParserResult
+    {
+        public bool Failed => Ast == null;
+
+        public Ast Ast;
+
+        public List<ParserException> Errors;
+    }
+
     public class Parser
     {
         Lexer _lexer;
@@ -12,65 +21,72 @@ namespace GameKit.Scripting.Internal
         /// <summary>
         /// Compile the passed code into an AST. Throws exceptions on error.
         /// </summary>
-        public Ast ParseToAst(string str, string fileNameHint, Dictionary<string, MethodInfo> methods)
+        public ParserResult ParseToAst(string str, string fileNameHint, Dictionary<string, MethodInfo> methods)
         {
-            _lexer = new Lexer(str, fileNameHint);
-
-            var functions = new List<FunctionDecl>();
-
-            var statements = new List<Expression>();
-            while (!_lexer.EndOfFile())
+            try
             {
-                var stmt = ParseStatement();
-                if (stmt is FunctionDecl func)
+                _lexer = new Lexer(str, fileNameHint);
+
+                var functions = new List<FunctionDecl>();
+
+                var statements = new List<Expression>();
+                while (!_lexer.EndOfFile())
                 {
-                    functions.Add(func);
+                    var stmt = ParseStatement();
+                    if (stmt is FunctionDecl func)
+                    {
+                        functions.Add(func);
+                    }
+                    else
+                    {
+                        statements.Add(stmt);
+                    }
                 }
-                else
+
+                // Note: We emit "main" function even if it's empty - that's intentional
+                functions.Add(new FunctionDecl
                 {
-                    statements.Add(stmt);
+                    Name = "main",
+                    Body = statements,
+                    ParameterNames = new(),
+                    ResultType = typeof(object)
+                });
+
+                // Write AST before SA
+                File.WriteAllText("E:\\ast.txt", "");
+                File.AppendAllText("E:\\ast.txt", "\n");
+
+                foreach (var f in functions)
+                {
+                    File.AppendAllText("E:\\ast.txt", $"{f.ToString("")}\n");
+                    File.AppendAllText("E:\\ast.txt", "\n");
                 }
-            }
 
-            // Note: We emit "main" function even if it's empty - that's intentional
-            functions.Add(new FunctionDecl
-            {
-                Name = "main",
-                Body = statements,
-                ParameterNames = new(),
-                ResultType = typeof(object)
-            });
+                //
+                var ast = new Ast
+                {
+                    FileNameHint = fileNameHint,
+                    Functions = functions,
+                };
 
-            // Write AST before SA
-            File.WriteAllText("E:\\ast.txt", "");
-            File.AppendAllText("E:\\ast.txt", "\n");
+                SemanticAnalysis.Analyse(ast, methods);
 
-            foreach (var f in functions)
-            {
-                File.AppendAllText("E:\\ast.txt", $"{f.ToString("")}\n");
+                // Write AST after SA
+                File.WriteAllText("E:\\ast.txt", "");
                 File.AppendAllText("E:\\ast.txt", "\n");
+
+                foreach (var f in functions)
+                {
+                    File.AppendAllText("E:\\ast.txt", $"{f.ToString("")}\n");
+                    File.AppendAllText("E:\\ast.txt", "\n");
+                }
+
+                return new ParserResult { Ast = ast };
             }
-
-            //
-            var ast = new Ast
+            catch (ParserException e)
             {
-                FileNameHint = fileNameHint,
-                Functions = functions,
-            };
-
-            SemanticAnalysis.Analyse(ast, methods);
-
-            // Write AST after SA
-            File.WriteAllText("E:\\ast.txt", "");
-            File.AppendAllText("E:\\ast.txt", "\n");
-
-            foreach (var f in functions)
-            {
-                File.AppendAllText("E:\\ast.txt", $"{f.ToString("")}\n");
-                File.AppendAllText("E:\\ast.txt", "\n");
+                return new ParserResult { Errors = new List<ParserException> { e } };
             }
-
-            return ast;
         }
 
         Expression ParseStatement()
@@ -169,22 +185,21 @@ namespace GameKit.Scripting.Internal
         /// </summary>
         List<Expression> ParseBlock()
         {
-            _lexer.Accept(TokenKind.BraceOpen);
+            var braceOpenTk = _lexer.Accept(TokenKind.BraceOpen);
 
             var statements = new List<Expression>();
             while (!_lexer.Peek(TokenKind.BraceClose))
             {
+                if (_lexer.EndOfFile())
+                    throw new ParserException("Unexpected end of file (missing '}')", braceOpenTk.SourceLoc);
+
                 var firstTk = _lexer.Peek();
 
                 var stmt = ParseStatement();
                 if (stmt is FunctionDecl)
-                {
-                    _lexer.ThrowError("Local functions are not supported", firstTk.SourceLoc);
-                }
-                else
-                {
-                    statements.Add(stmt);
-                }
+                    throw new ParserException("Local functions are not supported", firstTk.SourceLoc);
+
+                statements.Add(stmt);
             }
             _lexer.Accept(TokenKind.BraceClose);
 
