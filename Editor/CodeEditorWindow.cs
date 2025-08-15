@@ -95,6 +95,16 @@ namespace GameKit.Scripting
         private bool _enterActive;
         private bool _swallowEnterUp;
 
+        // Wiggle settings
+        private const float WiggleAmplitude = 0.7f;   // px up/down
+        private const float WiggleWavelength = 3;   // px per wave
+        private const float WiggleThickness = 2.0f;   // line thickness
+        private const float UnderlineYOffset = -1;   // pixels above the bottom of the line
+        static Color underlineColor = new Color(1f, 0, 0, 1f);
+
+        // A style used only for measuring text widths (no wrap, no padding)
+        private GUIStyle measureStyle;
+
         // Open
         public static void OpenWindow(AttachedScriptAuthoring target)
         {
@@ -152,6 +162,17 @@ namespace GameKit.Scripting
                 statusStyle = new GUIStyle(EditorStyles.miniLabel)
                 {
                     alignment = TextAnchor.MiddleRight
+                };
+            }
+
+            if (measureStyle == null)
+            {
+                measureStyle = new GUIStyle(codeStyle)
+                {
+                    richText = false,
+                    wordWrap = false,
+                    padding = new RectOffset(),
+                    clipping = TextClipping.Overflow
                 };
             }
         }
@@ -422,6 +443,7 @@ namespace GameKit.Scripting
                 return;
             }
 
+            // Toolbar
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
                 // Word wrap toggle
@@ -433,22 +455,25 @@ namespace GameKit.Scripting
                     cachedLineHeight = -1f;
                 }
 
+                // Force save toggle
+                allowForceSave = GUILayout.Toggle(allowForceSave, "Force Save", EditorStyles.toolbarButton);
+
+                GUILayout.FlexibleSpace();
+
+                // Save
                 using (new EditorGUI.DisabledScope(IsFailed() && !allowForceSave))
                 {
                     if (GUILayout.Button("Save", EditorStyles.toolbarButton))
                         TrySave();
                 }
 
+                // Revert
                 if (GUILayout.Button("Revert", EditorStyles.toolbarButton))
                 {
                     tempString = targetScript.Code;
                     lastHighlightedSrc = null;
                     MarkDirtyForParse();
                 }
-
-                // Force save toggle
-                GUILayout.FlexibleSpace();
-                allowForceSave = GUILayout.Toggle(allowForceSave, "Force Save", EditorStyles.toolbarButton);
             }
 
             // --- compute first, draw conditionally on Repaint ---
@@ -551,6 +576,35 @@ namespace GameKit.Scripting
                     drawStyle.Draw(contentCodeRect, new GUIContent(highlightedRichText ?? (tempString ?? string.Empty)), false, false, false, false);
 
                     GUI.contentColor = prevContentColor;
+
+                    // --- NEW: wiggly underlines for exact error spans (works best with wordWrap=false) ---
+                    if (HasErrors())
+                    {
+                        foreach (var err in parseResult.Errors)
+                        {
+                            int line1 = err.SourceLoc.Line;
+                            int col1 = GetErrColumn(err.SourceLoc);                 // 1-based col (0 if unknown)
+                            int len = GetErrLength(err.SourceLoc);                 // 0 if unknown
+
+                            int li0 = Mathf.Clamp(line1 - 1, 0, lines.Length - 1);
+
+                            if (col1 <= 0)
+                            {
+                                int start = 0;
+                                while (lines[li0][start] == ' ')
+                                {
+                                    ++start;
+                                }
+
+                                // No column info: underline the whole line
+                                DrawErrorUnderline(contentCodeRect, lineH, lines, li0, start + 1, lines[li0].Length, underlineColor);
+                            }
+                            else
+                            {
+                                DrawErrorUnderline(contentCodeRect, lineH, lines, li0, col1, len, underlineColor);
+                            }
+                        }
+                    }
                 }
 
                 // 5) Editable transparent overlay: no background, invisible text
@@ -782,11 +836,9 @@ namespace GameKit.Scripting
         private bool HasParseResult() =>
             !parseDirty && (parseResult.Ast != null || (parseResult.Errors != null));
 
-        private bool HasErrors() =>
-            HasParseResult() && (parseResult.Errors?.Count ?? 0) > 0;
+        private bool HasErrors() => (parseResult.Errors?.Count ?? 0) > 0;
 
-        private bool IsFailed() =>
-            HasParseResult() && (parseResult.Ast == null || HasErrors());
+        private bool IsFailed() => parseResult.Ast == null || HasErrors();
 
         // ---- Overlay style helpers ----
         private static void MakeOverlayTransparent(GUIStyle s)
@@ -815,6 +867,116 @@ namespace GameKit.Scripting
             s.onFocused.textColor = t;
             s.onActive.textColor = t;
             s.onHover.textColor = t;
+        }
+
+        private static int GetErrColumn(object srcLoc)  // 1-based; 0/neg if unknown
+        {
+            dynamic l = srcLoc;
+            try { return Mathf.Max(0, (int)l.Column); } catch { return 0; }
+        }
+
+        private static int GetErrLength(object srcLoc)  // 0 if unknown
+        {
+            dynamic l = srcLoc;
+            try
+            {
+                int len = 0;
+                try { len = (int)l.Length; } catch { /* ignore */ }
+                if (len > 0) return len;
+                int col = 0, end = 0;
+                try { col = (int)l.Column; } catch { }
+                try { end = (int)l.EndColumn; } catch { }
+                if (col > 0 && end > col) return end - col;
+                return 0;
+            }
+            catch { return 0; }
+        }
+
+        // Fallback: guess token length until whitespace
+        private static int GuessTokenLength(string line, int startIdx0)
+        {
+            int i = Mathf.Clamp(startIdx0, 0, line.Length);
+            while (i < line.Length && !char.IsWhiteSpace(line[i])) i++;
+            return i - startIdx0;
+        }
+
+        // Measure X offset inside a line at a 1-based column
+        private float GetXAtColumn(string line, int col1Based)
+        {
+            int idx0 = Mathf.Clamp(col1Based - 1, 0, line?.Length ?? 0);
+            if (string.IsNullOrEmpty(line) || idx0 == 0) return 0f;
+            // measure substring width with a non-wrapping style
+            var before = line.Substring(0, idx0);
+            return measureStyle.CalcSize(new GUIContent(before)).x;
+        }
+
+        // Draw a polyline wiggle from x0..x1 at baseline y
+        private void DrawWiggly(float x0, float x1, float y, Color color)
+        {
+            if (x1 <= x0) return;
+
+            // Retina-safe thickness
+            float t = WiggleThickness * EditorGUIUtility.pixelsPerPoint;
+            float amp = WiggleAmplitude;
+            float wave = Mathf.Max(2f, WiggleWavelength);
+
+            // Create points
+            int steps = Mathf.Max(2, Mathf.CeilToInt((x1 - x0) / (wave * 0.5f)));
+            var pts = new Vector3[steps + 1];
+            float dx = (x1 - x0) / steps;
+
+            for (int i = 0; i <= steps; i++)
+            {
+                float x = x0 + dx * i;
+                // zigzag (cheaper than sine): alternate ±amp every half-wave
+                float phase = (x - x0) / wave;
+                float ay = ((int)Mathf.Floor(phase + 0.5f) % 2 == 0) ? amp : -amp;
+                pts[i] = new Vector3(x, y + ay, 0);
+            }
+
+            Handles.BeginGUI();
+            var prevCol = Handles.color;
+            Handles.color = color;
+#if UNITY_2022_1_OR_NEWER
+            Handles.DrawAAPolyLine(t, pts);
+#else
+    Handles.DrawAAPolyLine(pts); // older versions ignore thickness
+#endif
+            Handles.color = prevCol;
+            Handles.EndGUI();
+        }
+
+        // Convenience: draw a squiggle for a single error on a single (unwrapped) line
+        private void DrawErrorUnderline(Rect contentCodeRect, float lineH, string[] lines, int lineIdx0, int col1, int len, Color color)
+        {
+            lineIdx0 = Mathf.Clamp(lineIdx0, 0, lines.Length - 1);
+            string line = lines[lineIdx0];
+
+            float leftX = contentCodeRect.x + 6f; // left padding to match your drawStyle padding
+            float baseY = contentCodeRect.y + (lineIdx0 + 1) * lineH - UnderlineYOffset;
+
+            float segX0 = leftX + GetXAtColumn(line, Mathf.Max(1, col1));
+            float segX1;
+            if (len > 0)
+            {
+                int endCol = Mathf.Max(1, col1 + len);
+                float width = measureStyle.CalcSize(new GUIContent(line.Substring(Mathf.Max(0, col1 - 1), Mathf.Min(len, line.Length - (col1 - 1))))).x;
+                segX1 = segX0 + width;
+            }
+            else
+            {
+                // underline until token end if no length info
+                int start0 = Mathf.Max(0, col1 - 1);
+                int guessed = GuessTokenLength(line, start0);
+                float width = measureStyle.CalcSize(new GUIContent(line.Substring(start0, Mathf.Min(guessed, line.Length - start0)))).x;
+                segX1 = segX0 + width;
+            }
+
+            // fallback if nothing measurable
+            if (Mathf.Approximately(segX0, segX1))
+                segX1 = leftX + measureStyle.CalcSize(new GUIContent(line)).x;
+
+            DrawWiggly(segX0, segX1, baseY, color);
         }
     }
 }
