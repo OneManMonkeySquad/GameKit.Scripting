@@ -54,12 +54,6 @@ namespace GameKit.Scripting
             "func", "if", "else", "branch", "sync", "null"
         };
 
-        // Optional: project/type-ish identifiers you want highlighted like types
-        private static readonly string[] TypeLike = new[]
-        {
-            "Ast","ParserResult","ParserException","Script","AttachedScriptAuthoring","CodeEditorWindow"
-        };
-
         // Regexes (compiled for speed)
         private static readonly Regex RxString = new Regex(@"""([^""\\]|\\.)*""", RegexOptions.Compiled);
         private static readonly Regex RxComment = new Regex(@"//.*?$|/\*.*?\*/", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.Multiline);
@@ -108,6 +102,27 @@ namespace GameKit.Scripting
 
         private int fontSize = 15;
 
+        // ---- Completion data/state ----
+        private static List<string> _globalCompletions = new List<string> { };
+        private List<string> completionFiltered = new List<string>();
+        private bool completionOpen;
+        private int completionSel = 0;
+        private string completionPrefix = "";
+        private int completionTokenStartIndex = 0;
+        private Rect completionPopupRect;
+        private Vector2 completionScroll;
+
+        // UI sizing
+        private const int CompletionMaxVisible = 10;
+        private const float CompletionItemHeight = 18f;
+        private const float CompletionWidthMin = 180f;
+        private const float CompletionWidthMax = 420f;
+
+        // When completion is open, Tab/Enter should commit (not indent/newline)
+        private bool CompletionActive => completionOpen && completionFiltered.Count > 0;
+
+        private int _lastCaretForCompletion = -1;
+
         // Open
         public static void OpenWindow(AttachedScriptAuthoring target)
         {
@@ -125,6 +140,15 @@ namespace GameKit.Scripting
             InitStyles();
             BuildHighlightRegexesIfNeeded();
             EditorApplication.update += DebouncedParseTick;
+
+            if (_globalCompletions.Count == 0)
+            {
+                Dictionary<string, MethodInfo> methods = new();
+                Script.GatherScriptableFunctions(methods);
+
+                _globalCompletions = methods.Select(m => m.Key).ToList();
+                UpdateCompletionFilter();
+            }
         }
 
         private void OnDisable()
@@ -253,23 +277,37 @@ namespace GameKit.Scripting
                 MarkDirtyForParse();
                 e.Use();
             }
+
+            // Manual completion trigger
+            if ((e.control || e.command) && e.keyCode == KeyCode.Space)
+            {
+                UpdateCompletionFilter();
+                completionOpen = completionFiltered.Count > 0;
+                if (completionOpen) GUI.FocusControl(TextControlName);
+                e.Use();
+            }
         }
 
         private void HandleIndentation(Event e)
         {
-            // Only act on KeyDown; Unity sends two KeyDowns for Tab (keyCode + character)
+            // Only handle real Tab keydowns; never touch Layout/Repaint
             if (e.type != EventType.KeyDown) return;
 
-            bool isTabKey = (e.keyCode == KeyCode.Tab) || (e.character == '\t');
-            if (!isTabKey) return;
+            bool isTab = (e.keyCode == KeyCode.Tab) || (e.character == '\t');
 
-            // If we already handled a Tab this event cycle, just swallow this duplicate
-            if (_tabActive)
+            // If completion is open, Tab commits it (still only on KeyDown)
+            if (CompletionActive && isTab)
             {
+                CommitCompletion(completionFiltered[completionSel], addParens: false);
+                GUI.FocusControl(TextControlName);
                 e.Use();
                 return;
             }
 
+            if (!isTab) return;
+
+            // If we already handled a Tab this cycle, swallow duplicate KeyDown
+            if (_tabActive) { e.Use(); return; }
             if (GUI.GetNameOfFocusedControl() != TextControlName) return;
 
             var te = (TextEditor)GUIUtility.GetStateObject(typeof(TextEditor), GUIUtility.keyboardControl);
@@ -279,7 +317,7 @@ namespace GameKit.Scripting
             int selStart = Mathf.Min(te.cursorIndex, te.selectIndex);
             int selEnd = Mathf.Max(te.cursorIndex, te.selectIndex);
 
-            if (!e.shift) // TAB → indent
+            if (!e.shift) // indent
             {
                 if (selStart == selEnd)
                 {
@@ -296,7 +334,7 @@ namespace GameKit.Scripting
                     te.selectIndex = blockStart + indented.Length;
                 }
             }
-            else // SHIFT+TAB → outdent
+            else // outdent
             {
                 if (selStart == selEnd)
                 {
@@ -308,7 +346,7 @@ namespace GameKit.Scripting
                         else
                         {
                             int spaces = 0;
-                            for (int i = 0; i < 4 && lineStart + i < src.Length && src[lineStart + i] == ' '; i++) spaces++;
+                            for (int i = 0; i < IndentString.Length && lineStart + i < src.Length && src[lineStart + i] == ' '; i++) spaces++;
                             if (spaces > 0) { tempString = src.Remove(lineStart, spaces); removed = spaces; }
                         }
                     }
@@ -328,81 +366,118 @@ namespace GameKit.Scripting
             lastHighlightedSrc = null;
             MarkDirtyForParse();
 
-            // mark that we've handled Tab; swallow the *next* KeyDown and the KeyUp
-            _tabActive = true;
-            _swallowTabUp = true;
-
-            // keep focus here
+            _tabActive = true;      // swallow next Tab KeyDown
+            _swallowTabUp = true;   // swallow Tab KeyUp to keep focus
             GUI.FocusControl(TextControlName);
-
-            // fully consume this event so TextArea won't see it
-            e.Use();
+            e.Use();                // consume this KeyDown
         }
 
         private void HandleAutoIndentEnter(Event e)
         {
+            // Only handle real Enter keydowns; never touch Layout/Repaint
             if (e.type != EventType.KeyDown) return;
 
             bool isEnter =
                 e.keyCode == KeyCode.Return ||
                 e.keyCode == KeyCode.KeypadEnter ||
-                e.character == '\n' ||
-                e.character == '\r';
+                e.character == '\n' || e.character == '\r';
+
+            // If completion is open, Enter commits it (still only on KeyDown)
+            if (CompletionActive && isEnter)
+            {
+                CommitCompletion(completionFiltered[completionSel], addParens: false);
+                GUI.FocusControl(TextControlName);
+                e.Use();
+                return;
+            }
 
             if (!isEnter) return;
 
-            // Unity often fires two KeyDowns for Enter (keyCode + character).
-            // If we already handled one this frame, swallow the duplicate.
             if (_enterActive) { e.Use(); return; }
-
             if (GUI.GetNameOfFocusedControl() != TextControlName) return;
 
             var te = (TextEditor)GUIUtility.GetStateObject(typeof(TextEditor), GUIUtility.keyboardControl);
             if (te == null) return;
 
             string s = tempString ?? string.Empty;
-
-            // Selection/caret
             int selStart = Mathf.Min(te.cursorIndex, te.selectIndex);
             int selEnd = Mathf.Max(te.cursorIndex, te.selectIndex);
 
-            // Find start of the *current* line (the one we’re splitting)
+            // previous line indent
             int lineStart = FindLineStart(s, selStart);
-
-            // Extract the line’s leading indentation (exact tabs/spaces)
             int i = lineStart;
-            var indent = new System.Text.StringBuilder(16);
-            while (i < s.Length)
-            {
-                char ch = s[i];
-                if (ch == ' ' || ch == '\t') { indent.Append(ch); i++; }
-                else break;
-            }
+            var indent = new StringBuilder(16);
+            while (i < s.Length && (s[i] == ' ' || s[i] == '\t')) { indent.Append(s[i]); i++; }
             string indentStr = indent.ToString();
 
-            // Replace selection with newline + same indent
+            // insert newline + indent
             string before = s.Substring(0, selStart);
             string after = s.Substring(selEnd);
             tempString = before + "\n" + indentStr + after;
 
-            // Move caret after the inserted indent
             int newCaret = before.Length + 1 + indentStr.Length;
             te.cursorIndex = te.selectIndex = newCaret;
 
             lastHighlightedSrc = null;
             MarkDirtyForParse();
 
-            // Prevent TextArea & IMGUI from also handling this Enter
             _enterActive = true;
             _swallowEnterUp = true;
             GUI.FocusControl(TextControlName);
-            e.Use();
+            e.Use(); // consume this KeyDown
+        }
+
+        private void HandleCompletionKeys(Event e)
+        {
+            if (!CompletionActive) return;
+
+            // Navigation
+            if (e.type == EventType.KeyDown)
+            {
+                if (e.keyCode == KeyCode.UpArrow)
+                {
+                    completionSel = (completionSel - 1 + completionFiltered.Count) % completionFiltered.Count;
+                    EnsureCompletionVisible();
+                    e.Use(); return;
+                }
+                if (e.keyCode == KeyCode.DownArrow)
+                {
+                    completionSel = (completionSel + 1) % completionFiltered.Count;
+                    EnsureCompletionVisible();
+                    e.Use(); return;
+                }
+
+                // Commit: Enter / Tab
+                if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter || e.keyCode == KeyCode.Tab)
+                {
+                    CommitCompletion(completionFiltered[completionSel], addParens: false);
+                    GUI.FocusControl(TextControlName);
+                    e.Use(); return;
+                }
+
+                // Commit with parentheses if '(' typed
+                if (e.character == '(')
+                {
+                    CommitCompletion(completionFiltered[completionSel], addParens: true);
+                    GUI.FocusControl(TextControlName);
+                    e.Use(); return;
+                }
+
+                // Dismiss
+                if (e.keyCode == KeyCode.Escape)
+                {
+                    completionOpen = false;
+                    e.Use(); return;
+                }
+            }
         }
 
         private void OnGUI()
         {
             InitStyles();
             var e = Event.current;
+
+            HandleCompletionKeys(e);
 
             // If we handled Enter already, swallow the duplicate KeyDown Unity sends
             if (_enterActive && e.type == EventType.KeyDown &&
@@ -644,6 +719,23 @@ namespace GameKit.Scripting
                 {
                     lastHighlightedSrc = null; // invalidate cache
                     MarkDirtyForParse();
+                    UpdateCompletionFilter();
+                }
+
+                // Also refresh completion when the caret moves (arrows, mouse click)
+                var teAfter = (TextEditor)GUIUtility.GetStateObject(typeof(TextEditor), GUIUtility.keyboardControl);
+                int caretNow = teAfter != null ? teAfter.cursorIndex : -1;
+                if (caretNow != _lastCaretForCompletion)
+                {
+                    _lastCaretForCompletion = caretNow;
+                    UpdateCompletionFilter();
+                }
+
+                if (Event.current.type == EventType.Repaint && CompletionActive)
+                {
+                    // recompute popup rect at caret
+                    completionPopupRect = GetCaretPopupRect(contentCodeRect, lineH, lines);
+                    DrawCompletionPopup(completionPopupRect);
                 }
             }
             GUI.EndScrollView();
@@ -986,6 +1078,151 @@ namespace GameKit.Scripting
                 segX1 = leftX + measureStyle.CalcSize(new GUIContent(line)).x;
 
             DrawWiggly(segX0, segX1, baseY, color);
+        }
+
+        private static bool IsWordChar(char ch) => char.IsLetterOrDigit(ch) || ch == '_';
+
+        private static int FindTokenStart(string s, int index)
+        {
+            index = Mathf.Clamp(index, 0, s?.Length ?? 0);
+            int i = index;
+            while (i > 0 && IsWordChar(s[i - 1])) i--;
+            return i;
+        }
+
+        private TextEditor GetTE() =>
+            (TextEditor)GUIUtility.GetStateObject(typeof(TextEditor), GUIUtility.keyboardControl);
+
+        private void UpdateCompletionFilter()
+        {
+            var te = GetTE();
+            if (te == null) { completionOpen = false; return; }
+
+            string src = tempString ?? string.Empty;
+            int caret = Mathf.Clamp(te.cursorIndex, 0, src.Length);
+
+            completionTokenStartIndex = FindTokenStart(src, caret);
+            int len = caret - completionTokenStartIndex;
+            completionPrefix = (len > 0) ? src.Substring(completionTokenStartIndex, len) : string.Empty;
+
+            if (string.IsNullOrEmpty(completionPrefix))
+            {
+                completionOpen = false;
+                completionFiltered.Clear();
+                return;
+            }
+
+            completionFiltered = _globalCompletions
+                .Where(w => w.StartsWith(completionPrefix, StringComparison.OrdinalIgnoreCase))
+                .Take(200)
+                .ToList();
+
+            completionSel = 0;
+            completionOpen = completionFiltered.Count > 0;
+        }
+
+        private Rect GetCaretPopupRect(Rect contentCodeRect, float lineH, string[] lines)
+        {
+            var te = GetTE();
+            int caret = te != null ? te.cursorIndex : 0;
+
+            // line/column
+            GetLineCol(tempString ?? string.Empty, caret, out int line, out int col);
+            string lineText = (line >= 0 && line < lines.Length) ? lines[line] : string.Empty;
+
+            // measure X up to 'col'
+            int span = Mathf.Min(col, lineText.Length);
+            float xOff = measureStyle.CalcSize(new GUIContent(span > 0 ? lineText.Substring(0, span) : "")).x;
+
+            // popup size
+            float itemCount = Mathf.Min(CompletionMaxVisible, Mathf.Max(1, completionFiltered.Count));
+            float height = itemCount * CompletionItemHeight + 4f;
+            float width = Mathf.Clamp(
+                completionFiltered.Count > 0 ? measureStyle.CalcSize(new GUIContent(completionFiltered[0])).x + 60f : 200f,
+                CompletionWidthMin, CompletionWidthMax);
+
+            // position right under caret
+            float x = contentCodeRect.x + 6f + xOff;
+            float y = contentCodeRect.y + line * lineH + lineH - 2f;
+
+            // ensure within the code rect horizontally
+            if (x + width > contentCodeRect.x + contentCodeRect.width) x = contentCodeRect.x + contentCodeRect.width - width;
+            if (x < contentCodeRect.x) x = contentCodeRect.x;
+
+            return new Rect(x, y, width, height);
+        }
+
+        private void CommitCompletion(string word, bool addParens)
+        {
+            var te = GetTE();
+            string src = tempString ?? string.Empty;
+            int caret = te != null ? te.cursorIndex : 0;
+
+            int start = Mathf.Clamp(completionTokenStartIndex, 0, src.Length);
+            int end = Mathf.Clamp(caret, 0, src.Length);
+
+            string insert = word + (addParens ? "()" : "");
+            tempString = src.Substring(0, start) + insert + src.Substring(end);
+
+            int newCaret = start + word.Length + (addParens ? 1 : 0); // inside parens if added
+            if (te != null) te.cursorIndex = te.selectIndex = newCaret;
+
+            lastHighlightedSrc = null;
+            MarkDirtyForParse();
+
+            completionOpen = false;
+        }
+
+        private void DrawCompletionPopup(Rect popupRect)
+        {
+            // background
+            EditorGUI.DrawRect(popupRect, EditorGUIUtility.isProSkin ? new Color(0.09f, 0.09f, 0.09f, 0.98f) : new Color(1f, 1f, 1f, 0.98f));
+            var border = new Rect(popupRect.x, popupRect.y, popupRect.width, popupRect.height);
+            Handles.BeginGUI();
+            Handles.color = EditorGUIUtility.isProSkin ? new Color(0.2f, 0.2f, 0.2f, 1f) : new Color(0.7f, 0.7f, 0.7f, 1f);
+            Handles.DrawSolidRectangleWithOutline(border, Color.clear, Handles.color);
+            Handles.EndGUI();
+
+            // list
+            var listRect = new Rect(popupRect.x + 2f, popupRect.y + 2f, popupRect.width - 4f, popupRect.height - 4f);
+            var viewRect = new Rect(0, 0, listRect.width - 16f, completionFiltered.Count * CompletionItemHeight);
+            completionScroll = GUI.BeginScrollView(listRect, completionScroll, viewRect);
+
+            for (int i = 0; i < completionFiltered.Count; i++)
+            {
+                var r = new Rect(0, i * CompletionItemHeight, viewRect.width, CompletionItemHeight);
+                bool sel = (i == completionSel);
+
+                if (sel)
+                    EditorGUI.DrawRect(r, EditorGUIUtility.isProSkin ? new Color(0.25f, 0.35f, 0.5f, 0.35f) : new Color(0.2f, 0.4f, 0.8f, 0.25f));
+
+                string item = completionFiltered[i];
+                var gc = new GUIContent(item);
+                var style = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleLeft };
+                style.normal.textColor = EditorGUIUtility.isProSkin ? Color.white : Color.black;
+
+                GUI.Label(new Rect(r.x + 6f, r.y, r.width - 6f, r.height), gc, style);
+
+                // mouse commit
+                if (Event.current.type == EventType.MouseDown && r.Contains(Event.current.mousePosition))
+                {
+                    completionSel = i;
+                    CommitCompletion(item, addParens: false);
+                    GUI.FocusControl(TextControlName);
+                    Event.current.Use();
+                    break;
+                }
+            }
+
+            GUI.EndScrollView();
+        }
+
+        private void EnsureCompletionVisible()
+        {
+            float y = completionSel * CompletionItemHeight;
+            if (y < completionScroll.y) completionScroll.y = y;
+            if (y + CompletionItemHeight > completionScroll.y + (CompletionMaxVisible * CompletionItemHeight))
+                completionScroll.y = y + CompletionItemHeight - (CompletionMaxVisible * CompletionItemHeight);
         }
     }
 }
