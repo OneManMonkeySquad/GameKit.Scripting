@@ -91,6 +91,10 @@ namespace GameKit.Scripting
             }
         }
 
+        // Enter handling (duplicate suppression + focus retention)
+        private bool _enterActive;
+        private bool _swallowEnterUp;
+
         // Open
         public static void OpenWindow(AttachedScriptAuthoring target)
         {
@@ -305,13 +309,93 @@ namespace GameKit.Scripting
             e.Use();
         }
 
+        private void HandleAutoIndentEnter(Event e)
+        {
+            if (e.type != EventType.KeyDown) return;
+
+            bool isEnter =
+                e.keyCode == KeyCode.Return ||
+                e.keyCode == KeyCode.KeypadEnter ||
+                e.character == '\n' ||
+                e.character == '\r';
+
+            if (!isEnter) return;
+
+            // Unity often fires two KeyDowns for Enter (keyCode + character).
+            // If we already handled one this frame, swallow the duplicate.
+            if (_enterActive) { e.Use(); return; }
+
+            if (GUI.GetNameOfFocusedControl() != TextControlName) return;
+
+            var te = (TextEditor)GUIUtility.GetStateObject(typeof(TextEditor), GUIUtility.keyboardControl);
+            if (te == null) return;
+
+            string s = tempString ?? string.Empty;
+
+            // Selection/caret
+            int selStart = Mathf.Min(te.cursorIndex, te.selectIndex);
+            int selEnd = Mathf.Max(te.cursorIndex, te.selectIndex);
+
+            // Find start of the *current* line (the one we’re splitting)
+            int lineStart = FindLineStart(s, selStart);
+
+            // Extract the line’s leading indentation (exact tabs/spaces)
+            int i = lineStart;
+            var indent = new System.Text.StringBuilder(16);
+            while (i < s.Length)
+            {
+                char ch = s[i];
+                if (ch == ' ' || ch == '\t') { indent.Append(ch); i++; }
+                else break;
+            }
+            string indentStr = indent.ToString();
+
+            // Replace selection with newline + same indent
+            string before = s.Substring(0, selStart);
+            string after = s.Substring(selEnd);
+            tempString = before + "\n" + indentStr + after;
+
+            // Move caret after the inserted indent
+            int newCaret = before.Length + 1 + indentStr.Length;
+            te.cursorIndex = te.selectIndex = newCaret;
+
+            lastHighlightedSrc = null;
+            MarkDirtyForParse();
+
+            // Prevent TextArea & IMGUI from also handling this Enter
+            _enterActive = true;
+            _swallowEnterUp = true;
+            GUI.FocusControl(TextControlName);
+            e.Use();
+        }
+
         private void OnGUI()
         {
             InitStyles();
             var e = Event.current;
 
+            // If we handled Enter already, swallow the duplicate KeyDown Unity sends
+            if (_enterActive && e.type == EventType.KeyDown &&
+                (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter || e.character == '\n' || e.character == '\r'))
+            {
+                e.Use();
+                // Return early so nothing else processes this duplicate
+                return;
+            }
+
+            // Eat the KeyUp so focus doesn't advance to next control
+            if (_swallowEnterUp && e.type == EventType.KeyUp &&
+                (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter))
+            {
+                e.Use();
+                _swallowEnterUp = false;
+                _enterActive = false;
+                GUI.FocusControl(TextControlName);
+                Repaint();
+            }
+
             // If we handled a Tab already, swallow the *next* Tab KeyDown (Unity sends two)
-            if (_tabActive && e.type == EventType.KeyDown && (e.keyCode == KeyCode.Tab || e.character == '\t'))
+            if (_tabActive && e.type == EventType.KeyDown && e.keyCode == KeyCode.Tab)
             {
                 e.Use();
                 // keep _tabActive until we observe the KeyUp below
@@ -330,6 +414,7 @@ namespace GameKit.Scripting
 
             HandleShortcuts(e);
             HandleIndentation(e);
+            HandleAutoIndentEnter(e);
 
             if (targetScript == null)
             {
