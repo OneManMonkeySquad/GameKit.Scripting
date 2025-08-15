@@ -66,7 +66,7 @@ namespace GameKit.Scripting.Runtime
         public static CompileResult Compile(string code, string fileNameHint)
         {
             var methods = new Dictionary<string, MethodInfo>();
-            RegisterScriptableFunctions(methods);
+            GatherScriptableFunctions(methods);
 
             var parseResult = Parse(code, fileNameHint, methods);
             return CompileAst(parseResult, methods);
@@ -75,7 +75,7 @@ namespace GameKit.Scripting.Runtime
         public static ParserResult Parse(string code, string fileNameHint)
         {
             var methods = new Dictionary<string, MethodInfo>();
-            RegisterScriptableFunctions(methods);
+            GatherScriptableFunctions(methods);
 
             var parser = new Parser();
             var result = parser.ParseToAst(code, fileNameHint, methods);
@@ -99,7 +99,7 @@ namespace GameKit.Scripting.Runtime
             return new CompileResult { Script = ca };
         }
 
-        public static void RegisterScriptableFunctions(Dictionary<string, MethodInfo> methods)
+        public static void GatherScriptableFunctions(Dictionary<string, MethodInfo> methods)
         {
 #if UNITY_EDITOR
             var taggedMethods = TypeCache.GetMethodsWithAttribute<ScriptableAttribute>();

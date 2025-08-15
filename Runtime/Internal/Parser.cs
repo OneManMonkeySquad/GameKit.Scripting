@@ -149,7 +149,7 @@ namespace GameKit.Scripting.Internal
 
             // Call
             if (!_lexer.Peek(TokenKind.ParenOpen))
-                _lexer.ThrowError($"Unknown statement");
+                _lexer.ThrowError($"Incomplete expression {name}");
 
             var arguments = ParseArguments();
 

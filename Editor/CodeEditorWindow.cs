@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace GameKit.Scripting
 {
@@ -45,7 +46,7 @@ namespace GameKit.Scripting
         private static readonly string ColString = "98C379";
         private static readonly string ColNumber = "D19A66";
         private static readonly string ColComment = "6A9955";
-        private static readonly string ColType = "4EC9B0"; // e.g. Ast, ParserResult, etc.
+        private static readonly string ColFunctions = "FFA500"; // e.g. Ast, ParserResult, etc.
 
         // Simple keyword sets
         private static readonly string[] CSharpKeywords = new[]
@@ -64,7 +65,7 @@ namespace GameKit.Scripting
         private static readonly Regex RxComment = new Regex(@"//.*?$|/\*.*?\*/", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.Multiline);
         private static readonly Regex RxNumber = new Regex(@"\b\d+(\.\d+)?\b", RegexOptions.Compiled);
         private static Regex RxKeywords;  // built once from CSharpKeywords
-        private static Regex RxTypes;     // built once from TypeLike
+        private static Regex RxFunctions;     // built once from TypeLike
 
         // line height cache
         private float cachedLineHeight = -1f;
@@ -189,10 +190,13 @@ namespace GameKit.Scripting
                 var kw = string.Join("|", CSharpKeywords.Select(Regex.Escape));
                 RxKeywords = new Regex(@"\b(" + kw + @")\b", RegexOptions.Compiled);
             }
-            if (RxTypes == null)
+            if (RxFunctions == null)
             {
-                var ty = string.Join("|", TypeLike.Select(Regex.Escape));
-                RxTypes = new Regex(@"\b(" + ty + @")\b", RegexOptions.Compiled);
+                Dictionary<string, MethodInfo> methods = new();
+                Script.GatherScriptableFunctions(methods);
+
+                var ty = string.Join("|", methods.Select(m => m.Key).Select(Regex.Escape));
+                RxFunctions = new Regex(@"\b(" + ty + @")\b", RegexOptions.Compiled);
             }
         }
 
@@ -738,8 +742,8 @@ namespace GameKit.Scripting
                 if (!IsCovered(m.Index)) spans.Add((m.Index, m.Length, ColKeyword));
 
             // Type-like names
-            foreach (Match m in RxTypes.Matches(safe))
-                if (!IsCovered(m.Index)) spans.Add((m.Index, m.Length, ColType));
+            foreach (Match m in RxFunctions.Matches(safe))
+                if (!IsCovered(m.Index)) spans.Add((m.Index, m.Length, ColFunctions));
 
             // Numbers
             foreach (Match m in RxNumber.Matches(safe))

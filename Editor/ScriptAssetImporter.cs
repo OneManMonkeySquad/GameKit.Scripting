@@ -29,7 +29,7 @@ namespace GameKit.Scripting
             try
             {
                 var methods = new Dictionary<string, MethodInfo>();
-                Script.RegisterScriptableFunctions(methods);
+                Script.GatherScriptableFunctions(methods);
 
                 var ast = Script.Parse(code, ctx.assetPath, methods);
                 asset.Code = code;
