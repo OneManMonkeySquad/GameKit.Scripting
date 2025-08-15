@@ -105,6 +105,8 @@ namespace GameKit.Scripting
         // A style used only for measuring text widths (no wrap, no padding)
         private GUIStyle measureStyle;
 
+        private int fontSize = 15;
+
         // Open
         public static void OpenWindow(AttachedScriptAuthoring target)
         {
@@ -141,6 +143,7 @@ namespace GameKit.Scripting
                     font = EditorStyles.textArea.font ?? TryGetMonoFont(),
                     fontSize = Mathf.Max(11, EditorStyles.textArea.fontSize)
                 };
+                codeStyle.fontSize = fontSize;
             }
 
             // Gutter (line numbers)
@@ -155,6 +158,7 @@ namespace GameKit.Scripting
                 gutterStyle.normal.textColor = EditorGUIUtility.isProSkin
                     ? new Color(0.7f, 0.7f, 0.7f)
                     : new Color(0.35f, 0.35f, 0.35f);
+                gutterStyle.fontSize = fontSize;
             }
 
             if (statusStyle == null)
@@ -174,6 +178,7 @@ namespace GameKit.Scripting
                     padding = new RectOffset(),
                     clipping = TextClipping.Overflow
                 };
+                measureStyle.fontSize = fontSize;
             }
         }
 
@@ -591,7 +596,7 @@ namespace GameKit.Scripting
                             if (col1 <= 0)
                             {
                                 int start = 0;
-                                while (lines[li0][start] == ' ')
+                                while (start < lines[li0].Length && lines[li0][start] == ' ')
                                 {
                                     ++start;
                                 }
