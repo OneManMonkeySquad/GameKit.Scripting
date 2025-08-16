@@ -914,15 +914,15 @@ namespace GameKit.Scripting
                 }
 
                 // Notes (description/obsolete/tooltip) in scroll
-                var notes = "GetMethodNotes(mi)";
-                var notesRect = new Rect(detailsRect.x + pad, line.y, detailsRect.width - 2 * pad, detailsRect.yMax - line.y - 28f);
-                var viewW = notesRect.width - 16f;
-                var content = new GUIContent(string.IsNullOrEmpty(notes) ? "No description available." : notes);
-                var neededH = Mathf.Max(20f, EditorStyles.wordWrappedLabel.CalcHeight(content, viewW));
-                var viewRect2 = new Rect(0, 0, viewW, neededH);
+                // var notes = "GetMethodNotes(mi)";
+                // var notesRect = new Rect(detailsRect.x + pad, line.y, detailsRect.width - 2 * pad, detailsRect.yMax - line.y - 28f);
+                // var viewW = notesRect.width - 16f;
+                // var content = new GUIContent(string.IsNullOrEmpty(notes) ? "No description available." : notes);
+                // var neededH = Mathf.Max(20f, EditorStyles.wordWrappedLabel.CalcHeight(content, viewW));
+                // var viewRect2 = new Rect(0, 0, viewW, neededH);
 
-                sidebarDetailsScroll = GUI.BeginScrollView(notesRect, sidebarDetailsScroll, viewRect2);
-                GUI.Label(new Rect(0, 0, viewRect2.width, viewRect2.height), content, EditorStyles.wordWrappedLabel);
+                // sidebarDetailsScroll = GUI.BeginScrollView(notesRect, sidebarDetailsScroll, viewRect2);
+                // GUI.Label(new Rect(0, 0, viewRect2.width, viewRect2.height), content, EditorStyles.wordWrappedLabel);
                 GUI.EndScrollView();
 
                 // Buttons (Insert / Insert())
