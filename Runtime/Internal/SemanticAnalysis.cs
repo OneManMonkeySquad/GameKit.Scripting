@@ -161,6 +161,10 @@ namespace GameKit.Scripting.Internal
             {
                 expr.ResultType = typeof(string);
             }
+            else if (l == typeof(string) && r == typeof(object))
+            {
+                expr.ResultType = typeof(string);
+            }
             else if (l == null || r == null)
             {
                 throw new Exception($"Invalid MathExpr one is null");

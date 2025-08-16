@@ -131,7 +131,9 @@ namespace GameKit.Scripting.Internal
         public static string Add(string left, string right) => left + right;
         public static string Add(int left, string right) => left + right;
         public static string Add(string left, int right) => left + right;
+        public static string Add(string left, object right) => left + right;
         public static string Add(string left, Entity right) => left + right;
+
 
         public static int Mul(int left, int right) => left * right;
 
