@@ -131,36 +131,9 @@ namespace GameKit.Scripting.Internal
         public static string Add(string left, string right) => left + right;
         public static string Add(int left, string right) => left + right;
         public static string Add(string left, int right) => left + right;
-
-        public static object Add(object left, object right)
-        {
-            return (left, right) switch
-            {
-                (int l, int r) => l + r,
-                (int l, string r) => l + r,
-                (float l, float r) => l + r,
-                (float l, double r) => l + r,
-                (double l, float r) => l + r,
-                (double l, int r) => l + r,
-                (string l, int r) => l + r,
-                (string l, string r) => l + r,
-                (string l, Entity r) => l + r,
-                _ => throw new Exception("Unexpected types for Add " + (left.GetType(), right.GetType())),
-            };
-        }
+        public static string Add(string left, Entity right) => left + right;
 
         public static int Mul(int left, int right) => left * right;
-
-        public static object Mul(object left, object right)
-        {
-            return (left, right) switch
-            {
-                (int l, int r) => l * r,
-                (double l, int r) => l * r,
-                (double l, float r) => l * r,
-                _ => throw new Exception("Unexpected types for Mul " + (left.GetType(), right.GetType())),
-            };
-        }
 
         public static bool CmpEq(object left, object right) => left == right;
         public static bool CmpEq(int left, int right) => left == right;
