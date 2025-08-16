@@ -904,13 +904,8 @@ namespace GameKit.Scripting
                 line.y += 20f;
 
                 // Signature
-                var sig = "FormatSignature(mi)";
+                var sig = string.Join(',', mi.GetParameters().Select(p => $"{p.ParameterType} {p.Name}"));
                 GUI.Label(line, sig, EditorStyles.miniLabel);
-                line.y += 18f;
-
-                // Declaring type + static
-                string meta = $"{(mi.IsStatic ? "static " : "")}declared in {mi.DeclaringType?.FullName ?? "?"}";
-                GUI.Label(line, meta, EditorStyles.miniLabel);
                 line.y += 18f;
 
                 // Notes (description/obsolete/tooltip) in scroll
