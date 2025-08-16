@@ -103,7 +103,7 @@ namespace GameKit.Scripting
         private int fontSize = 15;
 
         // ---- Completion data/state ----
-        private static List<string> _globalCompletions = new List<string> { };
+        private List<string> _globalCompletions = new List<string> { };
         private List<string> completionFiltered = new List<string>();
         private bool completionOpen;
         private int completionSel = 0;
@@ -898,15 +898,20 @@ namespace GameKit.Scripting
             var line = new Rect(detailsRect.x + pad, detailsRect.y + pad, detailsRect.width - 2 * pad, 18f);
             if (!string.IsNullOrEmpty(sidebarSelectedName) && completionInfo.TryGetValue(sidebarSelectedName, out var mi))
             {
+                var functionParams = mi.GetParameters();
+
                 // Title
                 var title = new GUIStyle(EditorStyles.boldLabel) { alignment = TextAnchor.MiddleLeft };
-                GUI.Label(line, sidebarSelectedName, title);
+                var sig = string.Join(',', functionParams.Select(p => $"{p.Name}"));
+                GUI.Label(line, $"{sidebarSelectedName}({sig})", title);
                 line.y += 20f;
 
                 // Signature
-                var sig = string.Join(',', mi.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"));
-                GUI.Label(line, sig, EditorStyles.miniLabel);
-                line.y += 18f;
+                foreach (var param in functionParams)
+                {
+                    GUI.Label(line, $"{param.Name}: {param.ParameterType.Name}", EditorStyles.miniLabel);
+                    line.y += 18f;
+                }
 
                 // Notes (description/obsolete/tooltip) in scroll
                 var notes = "GetMethodNotes(mi)";

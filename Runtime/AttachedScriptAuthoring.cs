@@ -1,7 +1,6 @@
 using UnityEngine;
 using Unity.Entities;
 using Unity.Collections;
-using GameKit.Scripting.Internal;
 
 namespace GameKit.Scripting.Runtime
 {
@@ -41,22 +40,42 @@ namespace GameKit.Scripting.Runtime
             {
                 // Bake script
                 BlobAssetReference<BlobScript> result = new();
-                if (authoring.Asset != null)
-                {
-                    DependsOn(authoring.Asset);
 
+                if (authoring.Source == SourceType.File)
+                {
+                    if (authoring.Asset != null)
+                    {
+                        DependsOn(authoring.Asset);
+
+                        var builder = new BlobBuilder(Allocator.Temp);
+                        ref BlobScript script = ref builder.ConstructRoot<BlobScript>();
+
+                        script.FileNameHint = authoring.Asset.FileNameHint;
+                        builder.AllocateString(ref script.Code, authoring.Asset.Code);
+                        script.CodeHash = authoring.Asset.Code.GetHashCode();
+
+                        result = builder.CreateBlobAssetReference<BlobScript>(Allocator.Persistent);
+                        builder.Dispose();
+
+                        //
+                        var cs = Script.Compile(authoring.Asset.Code, authoring.Asset.FileNameHint);
+                        cs.Script.TryExecuteFunction("on_bake");
+                    }
+                }
+                else if (authoring.Source == SourceType.Inline)
+                {
                     var builder = new BlobBuilder(Allocator.Temp);
                     ref BlobScript script = ref builder.ConstructRoot<BlobScript>();
 
-                    script.FileNameHint = authoring.Asset.FileNameHint;
-                    builder.AllocateString(ref script.Code, authoring.Asset.Code);
-                    script.CodeHash = authoring.Asset.Code.GetHashCode();
+                    script.FileNameHint = "<code>";
+                    builder.AllocateString(ref script.Code, authoring.Code);
+                    script.CodeHash = authoring.Code.GetHashCode();
 
                     result = builder.CreateBlobAssetReference<BlobScript>(Allocator.Persistent);
                     builder.Dispose();
 
                     //
-                    var cs = Script.Compile(authoring.Asset.Code, authoring.Asset.FileNameHint);
+                    var cs = Script.Compile(authoring.Code, "<code>");
                     cs.Script.TryExecuteFunction("on_bake");
                 }
 
