@@ -904,7 +904,7 @@ namespace GameKit.Scripting
                 line.y += 20f;
 
                 // Signature
-                var sig = string.Join(',', mi.GetParameters().Select(p => $"{p.ParameterType} {p.Name}"));
+                var sig = string.Join(',', mi.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"));
                 GUI.Label(line, sig, EditorStyles.miniLabel);
                 line.y += 18f;
 
