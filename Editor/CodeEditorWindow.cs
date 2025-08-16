@@ -123,6 +123,21 @@ namespace GameKit.Scripting
 
         private int _lastCaretForCompletion = -1;
 
+        // --- Completion sidebar (right pane) ---
+        private bool showCompletionSidebar = true;
+        private float sidebarWidth = 260f;
+        private const float SidebarMin = 160f;
+        private const float SidebarMax = 520f;
+        private bool resizingSidebar;
+
+        private Vector2 completionSidebarScroll;
+        private string completionSidebarFilter = ""; // optional filter box
+
+        // Sidebar selection + details
+        private string sidebarSelectedName;
+        private Vector2 sidebarDetailsScroll;
+        private Dictionary<string, MethodInfo> completionInfo = new Dictionary<string, MethodInfo>(StringComparer.OrdinalIgnoreCase);
+
         // Open
         public static void OpenWindow(AttachedScriptAuthoring target)
         {
@@ -148,6 +163,8 @@ namespace GameKit.Scripting
 
                 _globalCompletions = methods.Select(m => m.Key).ToList();
                 UpdateCompletionFilter();
+
+                completionInfo = new Dictionary<string, MethodInfo>(methods, StringComparer.OrdinalIgnoreCase);
             }
         }
 
@@ -542,6 +559,9 @@ namespace GameKit.Scripting
                 // Force save toggle
                 allowForceSave = GUILayout.Toggle(allowForceSave, "Force Save", EditorStyles.toolbarButton);
 
+                // Toggle sidebar visibility
+                showCompletionSidebar = GUILayout.Toggle(showCompletionSidebar, "Completions", EditorStyles.toolbarButton);
+
                 GUILayout.FlexibleSpace();
 
                 // Save
@@ -566,26 +586,36 @@ namespace GameKit.Scripting
             // Main editor area
             Rect fullRect = GUILayoutUtility.GetRect(0, 100000, 0, 100000, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
 
+
+            // If sidebar is visible, reserve space on the right
+            Rect mainRect = showCompletionSidebar
+                ? new Rect(fullRect.x, fullRect.y, fullRect.width - sidebarWidth, fullRect.height)
+                : fullRect;
+
+            Rect sidebarRect = showCompletionSidebar
+                ? new Rect(fullRect.xMax - sidebarWidth, fullRect.y, sidebarWidth, fullRect.height)
+                : Rect.zero;
+
+
+            // Gutter width
             string src = tempString ?? string.Empty;
             string[] lines = src.Split('\n');
             int lineCount = Mathf.Max(1, lines.Length);
 
-            // Gutter width
             int gutterDigits = Mathf.FloorToInt(Mathf.Log10(Mathf.Max(1, lineCount))) + 1;
             float digitWidth = gutterStyle.CalcSize(new GUIContent(new string('0', gutterDigits))).x;
             float gutterWidth = Mathf.Ceil(digitWidth) + 12f;
 
+            // Split rects for the main editor area (inside mainRect)
+            Rect gutterRect = new Rect(mainRect.x, mainRect.y, gutterWidth, mainRect.height);
+            Rect codeRect = new Rect(mainRect.x + gutterWidth, mainRect.y, mainRect.width - gutterWidth, mainRect.height);
+
             // Backgrounds
             if (repaint)
-                EditorGUI.DrawRect(fullRect, EditorGUIUtility.isProSkin ? new Color(0.15f, 0.15f, 0.15f) : new Color(0.95f, 0.95f, 0.95f));
-
-            // Split rects
-            Rect gutterRect = new Rect(fullRect.x, fullRect.y, gutterWidth, fullRect.height);
-            Rect codeRect = new Rect(fullRect.x + gutterWidth, fullRect.y, fullRect.width - gutterWidth, fullRect.height);
-
-            // Gutter background
-            if (repaint)
+            {
+                EditorGUI.DrawRect(mainRect, EditorGUIUtility.isProSkin ? new Color(0.15f, 0.15f, 0.15f) : new Color(0.95f, 0.95f, 0.95f));
                 EditorGUI.DrawRect(gutterRect, EditorGUIUtility.isProSkin ? new Color(0.12f, 0.12f, 0.12f) : new Color(0.90f, 0.90f, 0.90f));
+            }
 
             // Determine content height
             float lineH = GetLineHeight(codeStyle);
@@ -596,7 +626,7 @@ namespace GameKit.Scripting
                 : Mathf.Max(fullRect.height, Mathf.CeilToInt(padded.CalcHeight(new GUIContent(src), textWidth)) + 8f);
 
             // Scroll view
-            scroll = GUI.BeginScrollView(fullRect, scroll, new Rect(0, 0, fullRect.width - 16, contentHeight));
+            scroll = GUI.BeginScrollView(mainRect, scroll, new Rect(0, 0, mainRect.width - 16, contentHeight));
             {
                 Rect contentGutterRect = new Rect(0, 0, gutterWidth, contentHeight);
                 Rect contentCodeRect = new Rect(gutterWidth, 0, fullRect.width - gutterWidth - 16, contentHeight);
@@ -740,6 +770,12 @@ namespace GameKit.Scripting
             }
             GUI.EndScrollView();
 
+            // ----- Right completion sidebar -----
+            if (showCompletionSidebar)
+            {
+                OnGUICompletionSidebar(repaint, fullRect, sidebarRect);
+            }
+
             // Parse messages
             GUILayout.Space(6);
             if (parseDirty)
@@ -758,6 +794,154 @@ namespace GameKit.Scripting
 
             // Status bar (cursor, chars)
             DrawStatusBar();
+        }
+
+        private void OnGUICompletionSidebar(bool repaint, Rect fullRect, Rect sidebarRect)
+        {
+            // Resize handle (between main and sidebar)
+            var splitterRect = new Rect(sidebarRect.x - 3f, sidebarRect.y, 6f, sidebarRect.height);
+            EditorGUIUtility.AddCursorRect(splitterRect, MouseCursor.ResizeHorizontal);
+
+            // Handle drag (don’t Use() layout events)
+            if (Event.current.type == EventType.MouseDown && splitterRect.Contains(Event.current.mousePosition))
+            {
+                resizingSidebar = true;
+                Event.current.Use();
+            }
+            if (resizingSidebar && Event.current.type == EventType.MouseDrag)
+            {
+                float newWidth = Mathf.Clamp(fullRect.xMax - Event.current.mousePosition.x, SidebarMin, SidebarMax);
+                if (!Mathf.Approximately(newWidth, sidebarWidth))
+                {
+                    sidebarWidth = newWidth;
+                    Repaint();
+                }
+                Event.current.Use();
+            }
+            if (Event.current.type == EventType.MouseUp)
+            {
+                resizingSidebar = false;
+            }
+
+            // Background + border
+            if (repaint)
+            {
+                EditorGUI.DrawRect(sidebarRect, EditorGUIUtility.isProSkin ? new Color(0.10f, 0.10f, 0.10f, 1f) : new Color(0.98f, 0.98f, 0.98f, 1f));
+                Handles.BeginGUI();
+                Handles.color = EditorGUIUtility.isProSkin ? new Color(0.2f, 0.2f, 0.2f, 1f) : new Color(0.7f, 0.7f, 0.7f, 1f);
+                Handles.DrawLine(new Vector3(sidebarRect.x, sidebarRect.y), new Vector3(sidebarRect.x, sidebarRect.yMax));
+                Handles.EndGUI();
+            }
+
+            // Header + filter bar
+            var filterRect = new Rect(sidebarRect.x + 6f, sidebarRect.y + 2, sidebarRect.width - 12f, 18f);
+            completionSidebarFilter = EditorGUI.TextField(filterRect, completionSidebarFilter);
+
+            // List area
+            float listTop = filterRect.yMax + 4f;
+            float detailsHeight = Mathf.Clamp(sidebarRect.height * 0.35f, 120f, 260f);
+            var listRect = new Rect(sidebarRect.x, listTop, sidebarRect.width, sidebarRect.yMax - listTop - detailsHeight);
+            var items = string.IsNullOrEmpty(completionSidebarFilter)
+                ? _globalCompletions
+                : _globalCompletions.Where(w => w.IndexOf(completionSidebarFilter, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+
+            // Scrollable list
+            var viewRect = new Rect(0, 0, listRect.width - 16f, items.Count * 20f);
+            completionSidebarScroll = GUI.BeginScrollView(listRect, completionSidebarScroll, viewRect);
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                var row = new Rect(0, i * 20f, viewRect.width, 20f);
+                bool isSelected = string.Equals(items[i], sidebarSelectedName, StringComparison.Ordinal);
+
+                if (repaint && row.Contains(Event.current.mousePosition - new Vector2(listRect.x, listRect.y)))
+                    EditorGUI.DrawRect(new Rect(row.x, row.y, row.width, row.height),
+                        EditorGUIUtility.isProSkin ? new Color(1f, 1f, 1f, 0.06f) : new Color(0f, 0f, 0f, 0.06f));
+
+                if (isSelected)
+                    EditorGUI.DrawRect(new Rect(row.x, row.y, row.width, row.height),
+                        EditorGUIUtility.isProSkin ? new Color(0.25f, 0.35f, 0.6f, 0.30f) : new Color(0.2f, 0.4f, 0.8f, 0.25f));
+
+                // Invisible button for hit test (works with scroll)
+                if (GUI.Button(row, GUIContent.none, GUIStyle.none))
+                {
+                    sidebarSelectedName = items[i];
+                    if (Event.current.clickCount >= 2)
+                    {
+                        GUI.FocusControl(TextControlName);
+                        CommitCompletion(items[i], addParens: Event.current.shift);
+                    }
+                    Repaint();
+                }
+
+                GUI.Label(new Rect(row.x + 6f, row.y, row.width - 12f, row.height), items[i]);
+            }
+
+            GUI.EndScrollView();
+
+            // Details panel at the bottom
+            var detailsRect = new Rect(sidebarRect.x, sidebarRect.yMax - detailsHeight, sidebarRect.width, detailsHeight);
+
+            // Adjust the list height so it doesn't overlap the details panel
+            // (If you didn't already, set listRect height to: sidebarRect.yMax - listTop - detailsHeight)
+
+            if (repaint)
+            {
+                EditorGUI.DrawRect(detailsRect, EditorGUIUtility.isProSkin ? new Color(0.12f, 0.12f, 0.12f, 1f) : new Color(1f, 1f, 1f, 1f));
+                Handles.BeginGUI();
+                Handles.color = EditorGUIUtility.isProSkin ? new Color(0.2f, 0.2f, 0.2f, 1f) : new Color(0.7f, 0.7f, 0.7f, 1f);
+                Handles.DrawLine(new Vector2(detailsRect.x, detailsRect.y), new Vector2(detailsRect.xMax, detailsRect.y));
+                Handles.EndGUI();
+            }
+
+            var pad = 6f;
+            var line = new Rect(detailsRect.x + pad, detailsRect.y + pad, detailsRect.width - 2 * pad, 18f);
+            if (!string.IsNullOrEmpty(sidebarSelectedName) && completionInfo.TryGetValue(sidebarSelectedName, out var mi))
+            {
+                // Title
+                var title = new GUIStyle(EditorStyles.boldLabel) { alignment = TextAnchor.MiddleLeft };
+                GUI.Label(line, sidebarSelectedName, title);
+                line.y += 20f;
+
+                // Signature
+                var sig = "FormatSignature(mi)";
+                GUI.Label(line, sig, EditorStyles.miniLabel);
+                line.y += 18f;
+
+                // Declaring type + static
+                string meta = $"{(mi.IsStatic ? "static " : "")}declared in {mi.DeclaringType?.FullName ?? "?"}";
+                GUI.Label(line, meta, EditorStyles.miniLabel);
+                line.y += 18f;
+
+                // Notes (description/obsolete/tooltip) in scroll
+                var notes = "GetMethodNotes(mi)";
+                var notesRect = new Rect(detailsRect.x + pad, line.y, detailsRect.width - 2 * pad, detailsRect.yMax - line.y - 28f);
+                var viewW = notesRect.width - 16f;
+                var content = new GUIContent(string.IsNullOrEmpty(notes) ? "No description available." : notes);
+                var neededH = Mathf.Max(20f, EditorStyles.wordWrappedLabel.CalcHeight(content, viewW));
+                var viewRect2 = new Rect(0, 0, viewW, neededH);
+
+                sidebarDetailsScroll = GUI.BeginScrollView(notesRect, sidebarDetailsScroll, viewRect2);
+                GUI.Label(new Rect(0, 0, viewRect2.width, viewRect2.height), content, EditorStyles.wordWrappedLabel);
+                GUI.EndScrollView();
+
+                // Buttons (Insert / Insert())
+                var btnY = detailsRect.yMax - 24f;
+                if (GUI.Button(new Rect(detailsRect.x + pad, btnY, 80f, 20f), "Insert"))
+                {
+                    GUI.FocusControl(TextControlName);
+                    CommitCompletion(sidebarSelectedName, addParens: false);
+                }
+                if (GUI.Button(new Rect(detailsRect.x + pad + 86f, btnY, 90f, 20f), "Insert()"))
+                {
+                    GUI.FocusControl(TextControlName);
+                    CommitCompletion(sidebarSelectedName, addParens: true);
+                }
+            }
+            else
+            {
+                GUI.Label(line, "Select a function to see details.", EditorStyles.miniLabel);
+            }
         }
 
         private void TrySave()
