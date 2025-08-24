@@ -39,12 +39,13 @@ namespace GameKit.Scripting.Runtime
             }
         }
 
-        public void TryExecuteFunction(string name, object arg0)
+        public bool TryExecuteFunction(string name, object arg0)
         {
-            if (_functions.TryGetValue(name, out var method))
-            {
-                method.DynamicInvoke(arg0);
-            }
+            if (!_functions.TryGetValue(name, out var method))
+                return false;
+
+            method.DynamicInvoke(arg0);
+            return true;
         }
     }
 }

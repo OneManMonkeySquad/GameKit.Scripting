@@ -1,4 +1,5 @@
 using Unity.Entities;
+using UnityEngine;
 
 namespace GameKit.Scripting.Runtime
 {
@@ -54,7 +55,10 @@ namespace GameKit.Scripting.Runtime
                 {
                     foreach (var evt in events)
                     {
-                        script.Script.ExecuteFunction(evt.Name.ToString(), entity);
+                        if (!script.Script.TryExecuteFunction(evt.Name.ToString(), entity))
+                        {
+                            Debug.LogWarning($"No script function for {evt.Name}");
+                        }
                     }
 
                     events.RemoveRange(0, numEvents); // Instead of clear, execution could have added more events
